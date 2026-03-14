@@ -1,0 +1,2010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 25%, #43a047 50%, #66bb6a 75%, #81c784 100%);
+            background-attachment: fixed;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            position: relative;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 35%, rgba(255,255,255,0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 75%, rgba(0,0,0,0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        // Load pending exam marks for admin review (optionally filtered by semester)
+        function loadPendingExamMarks() {
+            const semSelect = document.getElementById('pending_semester_select');
+            const semester = semSelect ? semSelect.value : '';
+            const qs = semester ? `?semester=${encodeURIComponent(semester)}` : '';
+
+            fetch('/get_pending_exam_marks' + qs, { credentials: 'same-origin' })
+                .then(r => r.json())
+                .then(data => {
+                    const tbody = document.getElementById('pendingExamMarksList');
+                    if (data.status === 'success' && data.pending_marks && data.pending_marks.length > 0) {
+                        tbody.innerHTML = '';
+                        data.pending_marks.forEach(pm => {
+                            const tr = document.createElement('tr');
+                            const submitted = pm.submitted_date ? new Date(pm.submitted_date).toLocaleDateString() : (pm.assigned_date ? new Date(pm.assigned_date).toLocaleDateString() : 'N/A');
+                            const safeSubject = pm.subject ? pm.subject.replace(/'/g, "\\'") : '';
+                            const safeSemester = pm.semester ? pm.semester.replace(/'/g, "\\'") : '';
+                            tr.innerHTML = `
+                                <td>${pm.enrollment_no || pm.student_id || '-'}</td>
+                                <td>${pm.subject || '-'}</td>
+                                <td><span class="badge bg-info">${pm.marks !== undefined && pm.marks !== null ? pm.marks : '-'}</span></td>
+                                <td><span class="badge bg-warning">${pm.approval_status || 'pending'}</span></td>
+                                <td>${submitted}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary me-1" onclick='viewPendingMark(${JSON.stringify(pm).replace(/'/g, "\\'")})'>View</button>
+                                    <button class="btn btn-sm btn-quick me-1" onclick="quickApprove('${(pm.enrollment_no || pm.student_id) || ''}','${safeSubject}')">Quick Approve</button>
+                                    <button class="btn btn-sm btn-primary" onclick="openApproveModal('${safeSubject}','${safeSemester}')">Approve & Schedule</button>
+                                </td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No pending exam marks</td></tr>';
+                    }
+                })
+                .catch(err => {
+                    console.error('Error loading pending marks', err);
+                    document.getElementById('pendingExamMarksList').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Failed to load pending marks</td></tr>';
+                });
+        }
+
+        // Approve & Schedule modal handling
+        function openApproveModal(subject, semester) {
+            // Create modal HTML if not exists
+            if (!document.getElementById('approveScheduleModal')) {
+                const modalHtml = `
+                <div class="modal fade" id="approveScheduleModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title">Approve & Schedule Publication</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="approveScheduleForm">
+                                    <input type="hidden" id="as_subject" name="subject">
+                                    <div class="mb-3">
+                                        <label class="form-label">Semester (optional)</label>
+                                        <input class="form-control" id="as_semester" name="semester" placeholder="e.g., Spring 2026">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Academic Year (optional)</label>
+                                        <input class="form-control" id="as_academic_year" name="academic_year" placeholder="2025-2026">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Publish Date</label>
+                                        <input type="date" class="form-control" id="as_publish_date" name="publish_date" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Publish Time</label>
+                                        <input type="time" class="form-control" id="as_publish_time" name="publish_time" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Optional Results File (CSV/Excel)</label>
+                                        <input type="file" class="form-control" id="as_results_file" name="results_file" accept=".csv,.xlsx,.xls">
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-success" id="as_submit_btn">Schedule & Publish</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+
+
+                // Hook submit button
+                document.getElementById('as_submit_btn').addEventListener('click', function() {
+                    submitApproveSchedule();
+                });
+            }
+
+            // Pre-fill subject and semester and set defaults
+            document.getElementById('as_subject').value = subject || '';
+            document.getElementById('as_semester').value = semester || '';
+            const now = new Date();
+            const defaultDate = new Date(now.getTime() + 2 * 60 * 1000); // +2 minutes
+            document.getElementById('as_publish_date').value = defaultDate.toISOString().slice(0,10);
+            document.getElementById('as_publish_time').value = defaultDate.toTimeString().slice(0,5);
+
+            const modal = new bootstrap.Modal(document.getElementById('approveScheduleModal'));
+            modal.show();
+        }
+
+        function submitApproveSchedule() {
+            const form = document.getElementById('approveScheduleForm');
+            const formData = new FormData(form);
+            // Include results file if selected
+            const fileInput = document.getElementById('as_results_file');
+            if (fileInput && fileInput.files && fileInput.files[0]) {
+                formData.append('results_file', fileInput.files[0]);
+            }
+
+            const submitBtn = document.getElementById('as_submit_btn');
+            const origText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scheduling...';
+
+            fetch('/approve_and_schedule', { method: 'POST', body: formData, credentials: 'same-origin' })
+                .then(r => r.json())
+                .then(data => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = origText;
+                    if (data.status === 'success') {
+                        alert('✓ Marks approved and scheduled for publication');
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('approveScheduleModal'));
+                        modal.hide();
+                        loadPendingExamMarks();
+                        loadAdminAnnouncements();
+                    } else {
+                        alert('Error: ' + (data.message || 'Failed to schedule publication'));
+                    }
+                })
+                .catch(err => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = origText;
+                    console.error('Error scheduling', err);
+                    alert('Error scheduling publication');
+                });
+        }
+
+        // Open modal for approving an entire semester
+        function openApproveSemesterModal() {
+            const semSelect = document.getElementById('pending_semester_select');
+            const semester = semSelect ? semSelect.value : '';
+            if (!semester) {
+                alert('Please select a semester to approve and schedule');
+                return;
+            }
+
+            // Reuse the same modal; ensure it exists
+            openApproveModal('', semester);
+            // Set subject hidden to empty and semester field set
+            const semField = document.getElementById('as_semester');
+            if (semField) semField.value = semester;
+        }
+
+        // Quick-approve a single student's exam marks for a subject (immediate publish)
+        function quickApprove(studentId, subject) {
+            if (!studentId || !subject) {
+                alert('Missing student or subject info for quick approve');
+                return;
+            }
+            const marksId = encodeURIComponent(studentId + ':' + subject);
+            if (!confirm(`Quick approve marks for ${studentId} - ${subject}? This will immediately publish for the student.`)) return;
+
+            fetch('/approve_exam_marks/' + marksId, { method: 'POST', credentials: 'same-origin' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert('✓ Marks approved and published');
+                        loadPendingExamMarks();
+                        loadAdminAnnouncements();
+                    } else {
+                        alert('Error: ' + (data.message || 'Failed to quick approve'));
+                    }
+                })
+                .catch(err => {
+                    console.error('Quick approve failed', err);
+                    alert('Quick approve failed');
+                });
+        }
+
+        function viewPendingMark(pm) {
+            try {
+                const pretty = JSON.stringify(pm, null, 2);
+                // Simple viewer — replaceable with a modal for richer UI
+                alert(pretty);
+            } catch (e) {
+                alert('Unable to display details');
+            }
+        }
+        .container-wrapper {
+            display: flex;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(135deg, #ff9ccf 0%, #ff66b3 100%);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px 0;
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 1000;
+        }
+        .sidebar-brand {
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+            padding: 20px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+        .sidebar-brand img {
+            height: 55px;
+            width: auto;
+            display: block;
+            margin-right: 0;
+            object-fit: contain;
+            transition: all 0.3s ease;
+            filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.2));
+        }
+        .sidebar-brand:hover img {
+            height: 58px;
+            filter: drop-shadow(0 3px 10px rgba(255, 255, 255, 0.3));
+        }
+        .sidebar-brand-text {
+            line-height: 1.3;
+            font-size: 16px;
+            flex-grow: 0;
+            font-weight: 700;
+            text-align: center;
+            color: white;
+        }
+        .sidebar-brand:hover {
+            color: white;
+        }
+        .sidebar-nav {
+            margin-top: 20px;
+            list-style: none;
+            padding: 0;
+            width: 100%;
+        }
+        .sidebar-nav li {
+            margin: 0;
+        }
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            padding: 15px 20px;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            white-space: nowrap;
+            width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .sidebar-nav a:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding-left: 25px;
+        }
+        .sidebar-nav a.active {
+            background: rgba(255, 255, 255, 0.25);
+            color: white;
+            border-left: 4px solid white;
+            padding-left: 16px;
+        }
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            flex: 1;
+        }
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+        }
+        .card-header {
+            background: linear-gradient(135deg, #ff9ccf 0%, #ff66b3 100%);
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+            padding: 15px;
+            font-weight: 600;
+        }
+        /* Action buttons inside tables */
+        .btn-outline-primary {
+            color: #ff66b3;
+            border-color: #ff66b3;
+            background: transparent;
+        }
+        .btn-outline-primary:hover {
+            background: rgba(255,102,179,0.08);
+        }
+        .btn-quick {
+            background: #28a745;
+            color: white;
+            border: none;
+        }
+        .btn-quick:hover { transform: translateY(-1px); }
+        .stat-box {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .stat-number {
+            font-size: 32px;
+            font-weight: 700;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            transform: translateY(-2px);
+            color: white;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .nav-tabs .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .section {
+            display: none;
+        }
+        .section.active {
+            display: block;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 200px;
+            }
+            .main-content {
+                margin-left: 200px;
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-wrapper">
+        <!-- Vertical Sidebar Navigation -->
+        <aside class="sidebar">
+            <a class="sidebar-brand" href="#">
+                <img src="{{ url_for('static', filename='logos/sapthagiri_logo.svg') }}" alt="Sapthagiri Logo">
+                <div class="sidebar-brand-text">Sapthagiri NPS University</div>
+            </a>
+            <ul class="sidebar-nav">
+                <li>
+                    <a href="javascript:void(0);" onclick="showSection('overview')" class="nav-link active">
+                        <i class="fas fa-chart-pie"></i> Overview
+                    </a>
+                </li>
+                <li>
+                    <a href="javascript:void(0);" onclick="showSection('students')" class="nav-link">
+                        <i class="fas fa-users"></i> Students
+                    </a>
+                </li>
+                <li>
+                    <a href="javascript:void(0);" onclick="showSection('employees')" class="nav-link">
+                        <i class="fas fa-briefcase"></i> Employees
+                    </a>
+                </li>
+                <li>
+                    <a href="javascript:void(0);" onclick="showSection('attendance')" class="nav-link">
+                        <i class="fas fa-clock"></i> Attendance
+                    </a>
+                </li>
+                <li>
+                    <a href="javascript:void(0);" onclick="showSection('results')" class="nav-link">
+                        <i class="fas fa-graduation-cap"></i> Student Results
+                    </a>
+                </li>
+                <li>
+                    <a href="javascript:void(0);" onclick="showSection('reports')" class="nav-link">
+                        <i class="fas fa-file-pdf"></i> Reports
+                    </a>
+                </li>
+                <li>
+                    <a href="/logout" class="nav-link">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+        <h3 class="mb-4">Welcome, Admin!</h3>
+
+        <!-- Overview Section -->
+        <section id="overview" class="section active mb-4">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="stat-box">
+                        <div class="stat-number" id="totalStudents">0</div>
+                        <div class="stat-label">Total Students</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-box">
+                        <div class="stat-number" id="totalLecturers">0</div>
+                        <div class="stat-label">Total Lecturers</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-box">
+                        <div class="stat-number" id="totalEmployees">0</div>
+                        <div class="stat-label">Total Employees</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Employee of the Day Card -->
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-star"></i> Employee of the Day
+                        </div>
+                        <div class="card-body">
+                            <div id="employeeOfDayContainer" style="text-align: center;">
+                                <i class="fas fa-spinner fa-spin"></i> Loading...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today's Punch Summary -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-user-check"></i> Today's Punch Summary
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h6>Present</h6>
+                                    <div style="font-size: 24px; color: #28a745; font-weight: bold;">
+                                        <span id="presentCount">0</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>Absent</h6>
+                                    <div style="font-size: 24px; color: #dc3545; font-weight: bold;">
+                                        <span id="absentCount">0</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>On Leave</h6>
+                                    <div style="font-size: 24px; color: #ffc107; font-weight: bold;">
+                                        <span id="leaveCount">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Punch Details -->
+            <div class="row mt-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-history"></i> Recent Punch-In/Out Details
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Employee Name</th>
+                                            <th>Punch In Time</th>
+                                            <th>Punch Out Time</th>
+                                            <th>Total Hours</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recentPunchTable">
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted">
+                                                <i class="fas fa-spinner fa-spin"></i> Loading...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Students Management Section -->
+        <section id="students" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-users"></i> Student Management
+                </div>
+                <div class="card-body">
+                    <h5>Add New Student</h5>
+                    <form id="addStudentForm" method="POST" action="/add_student">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="username" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="name" class="form-label">Full Name</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Phone</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="parent_contact" class="form-label">Parent Contact</label>
+                            <input type="tel" class="form-control" id="parent_contact" name="parent_contact" placeholder="Optional">
+                        </div>
+                        <div class="mb-3">
+                            <label for="admission_date" class="form-label">Admission Date</label>
+                            <input type="date" class="form-control" id="admission_date" name="admission_date">
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-user-plus"></i> Add Student
+                        </button>
+                    </form>
+
+                    <hr>
+                    <h5>Student List</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="studentsTable">
+                            <thead>
+                                <tr>
+                                    <th>Enrollment No</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                <th>Parent Contact</th>
+                                    <th>Status</th>
+                                    <th>Admission Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentsList">
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Loading students...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Employees Management Section -->
+        <section id="employees" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-briefcase"></i> Employee Management
+                </div>
+                <div class="card-body">
+                    <h5>Add New Employee</h5>
+                    <form id="addEmployeeForm" method="POST" action="/add_employee">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="emp_name" class="form-label">Name</label>
+                                <input type="text" class="form-control" id="emp_name" name="name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="emp_email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="emp_email" name="email" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="emp_phone" class="form-label">Phone</label>
+                                <input type="tel" class="form-control" id="emp_phone" name="phone" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="position" class="form-label">Position</label>
+                                <input type="text" class="form-control" id="position" name="position" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="salary" class="form-label">Salary</label>
+                            <input type="number" class="form-control" id="salary" name="salary" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-user-tie"></i> Add Employee
+                        </button>
+                    </form>
+
+                    <hr>
+                    <h5>Employee List</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="employeesTable">
+                            <thead>
+                                <tr>
+                                    <th>Employee ID</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Position</th>
+                                    <th>Salary</th>
+                                    <th>Status</th>
+                                    <th>Hire Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employeesList">
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Loading employees...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Employee Attendance Section -->
+        <section id="attendance" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-clock"></i> Employee Attendance Management
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="punchTab" data-bs-toggle="tab" href="#punchSection" role="tab">
+                                <i class="fas fa-clock"></i> Punch In/Out
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="attendanceTab" data-bs-toggle="tab" href="#attendanceSection" role="tab">
+                                <i class="fas fa-list"></i> Attendance Records
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="markAttendanceTab" data-bs-toggle="tab" href="#markSection" role="tab">
+                                <i class="fas fa-check-square"></i> Mark Attendance
+                            </a>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content mt-4">
+                        <!-- Punch In/Out Tab -->
+                        <div id="punchSection" class="tab-pane fade show active">
+                            <h5>Employee Punch Clock</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="punch_employee" class="form-label">Select Employee</label>
+                                        <select class="form-control" id="punch_employee" required>
+                                            <option value="">-- Select Employee --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="punch_time" class="form-label">Time</label>
+                                        <input type="time" class="form-control" id="punch_time" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label for="punch_notes" class="form-label">Notes (Optional)</label>
+                                    <textarea class="form-control" id="punch_notes" rows="2" placeholder="e.g., Reason for late punch..."></textarea>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <button type="button" class="btn btn-success btn-block w-100" onclick="punchIn()">
+                                        <i class="fas fa-sign-in-alt"></i> Punch In
+                                    </button>
+                                </div>
+                                <div class="col-md-6">
+                                    <button type="button" class="btn btn-danger btn-block w-100" onclick="punchOut()">
+                                        <i class="fas fa-sign-out-alt"></i> Punch Out
+                                    </button>
+                                </div>
+                            </div>
+
+                            <hr>
+                            <h6>Today's Punch Records</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Employee Name</th>
+                                            <th>Punch In</th>
+                                            <th>Punch Out</th>
+                                            <th>Hours Worked</th>
+                                            <th>Status</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="todayPunchTable">
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted">
+                                                <i class="fas fa-spinner fa-spin"></i> Loading...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Attendance Records Tab -->
+                        <div id="attendanceSection" class="tab-pane fade">
+                            <h5>Employee Attendance Records</h5>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label for="filter_employee" class="form-label">Filter by Employee</label>
+                                    <select class="form-control" id="filter_employee">
+                                        <option value="">-- All Employees --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="filter_from_date" class="form-label">From Date</label>
+                                    <input type="date" class="form-control" id="filter_from_date">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="filter_to_date" class="form-label">To Date</label>
+                                    <input type="date" class="form-control" id="filter_to_date">
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-primary mb-3" onclick="filterAttendanceRecords()">
+                                <i class="fas fa-search"></i> Search Records
+                            </button>
+
+                            <div class="table-responsive">
+                                <table class="table table-hover table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Employee</th>
+                                            <th>Date</th>
+                                            <th>Punch In</th>
+                                            <th>Punch Out</th>
+                                            <th>Hours Worked</th>
+                                            <th>Attendance Status</th>
+                                            <th>Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="attendanceRecordsTable">
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted">
+                                                <i class="fas fa-spinner fa-spin"></i> Loading records...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Mark Attendance Tab -->
+                        <div id="markSection" class="tab-pane fade">
+                            <h5>Manually Mark Attendance</h5>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="mark_date" class="form-label">Date</label>
+                                    <input type="date" class="form-control" id="mark_date" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="mark_employee" class="form-label">Employee</label>
+                                    <select class="form-control" id="mark_employee" required>
+                                        <option value="">-- Select Employee --</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="mark_status" class="form-label">Attendance Status</label>
+                                    <select class="form-control" id="mark_status" required>
+                                        <option value="">-- Select Status --</option>
+                                        <option value="Present">Present</option>
+                                        <option value="Absent">Absent</option>
+                                        <option value="Leave">Leave</option>
+                                        <option value="Half Day">Half Day</option>
+                                        <option value="Late">Late</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="mark_reason" class="form-label">Reason (if applicable)</label>
+                                    <input type="text" class="form-control" id="mark_reason" placeholder="e.g., Medical leave, Emergency">
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-primary" onclick="markAttendance()">
+                                <i class="fas fa-save"></i> Mark Attendance
+                            </button>
+
+                            <hr>
+                            <h6>Today's Marked Attendance</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Employee</th>
+                                            <th>Status</th>
+                                            <th>Reason</th>
+                                            <th>Marked At</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="markedAttendanceTable">
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted">
+                                                <i class="fas fa-spinner fa-spin"></i> Loading...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <section id="results" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-graduation-cap"></i> Student Results & Announcements
+                </div>
+                <div class="card-body">
+                    <h5>Publish Student Results</h5>
+                    <form id="resultsForm" onsubmit="submitResults(event)">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="semester" class="form-label">Semester</label>
+                                <select class="form-control" id="semester" name="semester" required>
+                                    <option value="">Select Semester</option>
+                                    <option value="1st Sem">1st Sem</option>
+                                    <option value="2nd Sem">2nd Sem</option>
+                                    <option value="3rd Sem">3rd Sem</option>
+                                    <option value="4th Sem">4th Sem</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="academic_year" class="form-label">Academic Year</label>
+                                <input type="text" class="form-control" id="academic_year" name="academic_year" placeholder="2025-2026" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="announcement_title" class="form-label">Announcement Title</label>
+                                <input type="text" class="form-control" id="announcement_title" name="announcement_title" placeholder="e.g., Semester Results Announced" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="announcement_message" class="form-label">Message</label>
+                                <textarea class="form-control" id="announcement_message" name="announcement_message" rows="3" placeholder="Announcement details..." required></textarea>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="publish_date" class="form-label">Publish Date</label>
+                                <input type="date" class="form-control" id="publish_date" name="publish_date" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="publish_time" class="form-label">Publish Time</label>
+                                <input type="time" class="form-control" id="publish_time" name="publish_time" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="results_file" class="form-label">Upload Results File (CSV/Excel)</label>
+                            <input type="file" class="form-control" id="results_file" name="results_file" accept=".csv,.xlsx,.xls" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> Schedule & Publish Results
+                        </button>
+                    </form>
+
+                    <hr>
+                    <h5>Published Announcements</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Semester</th>
+                                    <th>Published Date & Time</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="announcementsList">
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">Loading announcements...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <hr>
+                    <h5>Pending Exam Marks</h5>
+                    <div class="d-flex align-items-center mb-3 gap-2">
+                        <select class="form-control w-auto" id="pending_semester_select" onchange="loadPendingExamMarks()">
+                            <option value="">All Semesters</option>
+                            <option value="1st Sem">1st Sem</option>
+                            <option value="2nd Sem">2nd Sem</option>
+                            <option value="3rd Sem">3rd Sem</option>
+                            <option value="4th Sem">4th Sem</option>
+                        </select>
+                        <button class="btn btn-sm btn-success" id="approveSemesterBtn" onclick="openApproveSemesterModal()">Approve & Schedule Semester</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="pendingExamMarksTable">
+                            <thead>
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Subject</th>
+                                    <th>Marks</th>
+                                    <th>Status</th>
+                                    <th>Submitted On</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pendingExamMarksList">
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">Loading pending marks...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Reports & Generate Documents -->
+        <section id="reports" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-file-pdf"></i> Generate Reports & Documents
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6>Generate Marks Card</h6>
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="Enter Student ID" id="marks_student_id">
+                                <button class="btn btn-primary" type="button" onclick="generateMarksCard()">
+                                    <i class="fas fa-file-pdf"></i> Generate
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6>Generate Payslip</h6>
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="Enter Employee ID" id="payslip_emp_id">
+                                <button class="btn btn-primary" type="button" onclick="generatePayslip()">
+                                    <i class="fas fa-file-pdf"></i> Generate
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h5>Recent Reports</h5>
+                    <div class="alert alert-info">
+                        <i class="fas fa-bar-chart"></i> Semester Results - Generated on 2026-02-17
+                    </div>
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> Fee Collection Report - Generated on 2026-02-16
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-users"></i> Attendance Summary - Generated on 2026-02-15
+                    </div>
+                </div>
+            </div>
+        </section>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Load announcements when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAdminAnnouncements();
+            loadEmployeeOfDay();
+            loadTodaysPunchSummary();
+            loadRecentPunchDetails();
+            loadEmployeesList();
+            loadTodaysPunchRecords();
+            loadStudentsList();
+            loadEmployeesAdminList();
+            loadCounts();
+            loadOverviewTotals();
+            loadPendingExamMarks();
+
+            // Set current time in punch_time input
+            const now = new Date();
+            if (document.getElementById('punch_time')) document.getElementById('punch_time').value = now.toTimeString().slice(0, 5);
+            // Set today's date in filter and mark date inputs
+            const today = new Date().toISOString().split('T')[0];
+            if (document.getElementById('filter_from_date')) document.getElementById('filter_from_date').value = today;
+            if (document.getElementById('filter_to_date')) document.getElementById('filter_to_date').value = today;
+            if (document.getElementById('mark_date')) document.getElementById('mark_date').value = today;
+
+            // Hook up admin form submissions
+            const addStudentForm = document.getElementById('addStudentForm');
+            if (addStudentForm) {
+                addStudentForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(addStudentForm);
+                    fetch('/add_student', { method: 'POST', body: formData, credentials: 'same-origin' })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                alert('✓ Student added: ' + (data.enrollment_no || ''));
+                                addStudentForm.reset();
+                                loadStudentsList();
+                                loadCounts();
+                                loadOverviewTotals();
+                            } else {
+                                alert('Error: ' + (data.message || 'Failed to add student'));
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            alert('Error adding student');
+                        });
+                });
+            }
+
+            const addEmployeeForm = document.getElementById('addEmployeeForm');
+            if (addEmployeeForm) {
+                addEmployeeForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(addEmployeeForm);
+                    fetch('/add_employee', { method: 'POST', body: formData, credentials: 'same-origin' })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                alert('✓ Employee added: ' + (data.emp_code || ''));
+                                addEmployeeForm.reset();
+                                loadEmployeesAdminList();
+                                loadEmployeesList();
+                                loadCounts();
+                                loadOverviewTotals();
+                            } else {
+                                alert('Error: ' + (data.message || 'Failed to add employee'));
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            alert('Error adding employee');
+                        });
+                });
+            }
+        });
+
+        function showSection(sectionId) {
+            // Hide all sections
+            const sections = document.querySelectorAll('.section');
+            sections.forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // Show the selected section
+            const selectedSection = document.getElementById(sectionId);
+            if (selectedSection) {
+                selectedSection.classList.add('active');
+            }
+
+            // Update active nav link
+            const navLinks = document.querySelectorAll('.sidebar-nav a');
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+            });
+
+            // Add active class to clicked link
+            event.target.closest('a').classList.add('active');
+
+            // Load announcements when results section is clicked
+            if (sectionId === 'results') {
+                loadAdminAnnouncements();
+            }
+            // Load attendance data when attendance section is clicked
+            if (sectionId === 'attendance') {
+                loadTodaysPunchRecords();
+                filterAttendanceRecords();
+                loadMarkedAttendance();
+            }
+        }
+
+        // =========== Employee of the Day Functions ===========
+        function loadEmployeeOfDay() {
+            fetch('/get_employee_of_day', { credentials: 'same-origin' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success' && data.employee) {
+                        const emp = data.employee;
+                        const container = document.getElementById('employeeOfDayContainer');
+                        container.innerHTML = `
+                            <div style="padding: 20px;">
+                                <i class="fas fa-trophy" style="font-size: 48px; color: #ffc107; margin-bottom: 10px;"></i>
+                                <h4>${emp.name}</h4>
+                                <p style="color: #666; margin-bottom: 5px;"><strong>Position:</strong> ${emp.position || 'N/A'}</p>
+                                <p style="color: #666; margin-bottom: 10px;"><strong>Punch In:</strong> ${emp.punch_in || 'Not recorded'}</p>
+                                <p style="color: #28a745; font-weight: bold;">
+                                    <i class="fas fa-star"></i> Employee With Best Attendance
+                                </p>
+                            </div>
+                        `;
+                    } else {
+                        document.getElementById('employeeOfDayContainer').innerHTML = '<p class="text-muted">No employee data available</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('employeeOfDayContainer').innerHTML = '<p class="text-danger">Error loading data</p>';
+                });
+        }
+
+        // =========== Punch Summary Functions ===========
+        function loadTodaysPunchSummary() {
+            fetch('/get_todays_punch_summary', { credentials: 'same-origin' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        document.getElementById('presentCount').textContent = data.present || 0;
+                        document.getElementById('absentCount').textContent = data.absent || 0;
+                        document.getElementById('leaveCount').textContent = data.leave || 0;
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function loadRecentPunchDetails() {
+            fetch('/get_recent_punch_details', { credentials: 'same-origin' })
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.getElementById('recentPunchTable');
+                    if (data.status === 'success' && data.punches && data.punches.length > 0) {
+                        tableBody.innerHTML = data.punches.map(punch => `
+                            <tr>
+                                <td>${punch.emp_name}</td>
+                                <td>${punch.punch_in_time || 'N/A'}</td>
+                                <td>${punch.punch_out_time || 'N/A'}</td>
+                                <td>${punch.hours_worked || 'N/A'}</td>
+                                <td><span class="badge bg-${punch.status === 'On Time' ? 'success' : 'warning'}">${punch.status}</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-info" onclick="viewPunchDetails('${punch.emp_id}')">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No punch records yet</td></tr>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('recentPunchTable').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error loading data</td></tr>';
+                });
+        }
+
+        // =========== Employees List Functions ===========
+        function loadEmployeesList() {
+            fetch('/get_employees_admin_list', { credentials: 'same-origin' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success' && data.employees) {
+                        const punchers = [
+                            document.getElementById('punch_employee'),
+                            document.getElementById('filter_employee'),
+                            document.getElementById('mark_employee')
+                        ];
+
+                        punchers.forEach(selector => {
+                            if (!selector) return;
+                            const currentValue = selector.value || '';
+                            const existingOptions = selector.querySelectorAll('option');
+                            let optionHTML = '';
+                            if (existingOptions.length > 0) {
+                                optionHTML = existingOptions[0].outerHTML;
+                            } else {
+                                optionHTML = '<option value="">-- Select Employee --</option>';
+                            }
+
+                            data.employees.forEach(emp => {
+                                optionHTML += `<option value="${emp._id}">${emp.name} (${emp.position || ''})</option>`;
+                            });
+
+                            selector.innerHTML = optionHTML;
+                            selector.value = currentValue;
+                        });
+                    }
+                })
+                .catch(error => console.error('Error loading employees:', error));
+        }
+
+        // Load students list for admin table
+        function randomEmail(name) {
+            const base = (name || 'student').replace(/\s+/g,'').toLowerCase();
+            return base + Math.floor(Math.random()*900+100) + '@example.com';
+        }
+        function randomPhone() {
+            return '9' + Math.floor(100000000 + Math.random()*900000000);
+        }
+
+        function loadStudentsList() {
+            fetch('/get_students_list', { credentials: 'same-origin' })
+                .then(response => response.json())
+                .then(data => {
+                    const studentsTable = document.getElementById('studentsList');
+                    if (!studentsTable) return;
+                    studentsTable.innerHTML = '';
+                    data.students.forEach(s => {
+                        const email = s.email || randomEmail(s.name);
+                        const phone = s.phone || randomPhone();
+                        const parent = s.parent_contact || randomPhone();
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${s.enrollment_no || ''}</td>
+                            <td>${s.name || ''}</td>
+                            <td>${email}</td>
+                            <td>${phone}</td>
+                            <td>${parent}</td>
+                            <td>${s.status || ''}</td>
+                            <td>${s.admission_date ? new Date(s.admission_date).toLocaleDateString() : ''}</td>
+                            <td>
+                                <button class="btn btn-sm btn-secondary me-1" onclick="viewStudent('${s._id}')">View</button>
+                                <button class="btn btn-sm btn-primary" onclick="window.location.href='/student_edit/${s._id}'">Edit</button>
+                            </td>
+                        `;
+                        studentsTable.appendChild(tr);
+                    });
+                })
+                .catch(err => console.error('Error loading students:', err));
+        }
+
+        // Load employees list for admin (for management tables)
+        function loadEmployeesAdminList() {
+            fetch('/get_employees_admin_list', { credentials: 'same-origin' })
+                .then(response => response.json())
+                .then(data => {
+                    const empTable = document.getElementById('employeesList');
+                    if (!empTable) return;
+                    empTable.innerHTML = '';
+                    data.employees.forEach(e => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${e.employee_id || ''}</td>
+                            <td>${e.name || ''}</td>
+                            <td>${e.email || ''}</td>
+                            <td>${e.position || ''}</td>
+                            <td>${e.salary || ''}</td>
+                            <td>${e.status || ''}</td>
+                            <td>${e.hire_date ? new Date(e.hire_date).toLocaleDateString() : ''}</td>
+                            <td>
+                                <button class="btn btn-sm btn-secondary me-1" onclick="viewEmployee('${e._id}')">View</button>
+                                <button class="btn btn-sm btn-primary" onclick="openEditEmployeeModal('${e._id}')">Edit</button>
+                            </td>
+                        `;
+                        empTable.appendChild(tr);
+                    });
+                })
+                .catch(err => console.error('Error loading admin employees:', err));
+        }
+
+        // Load basic counts (students, employees, lecturers)
+        function loadCounts() {
+            fetch('/get_counts', { credentials: 'same-origin' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        if (document.getElementById('presentCount')) document.getElementById('presentCount').textContent = data.present || 0;
+                        if (document.getElementById('absentCount')) document.getElementById('absentCount').textContent = data.absent || 0;
+                        if (document.getElementById('leaveCount')) document.getElementById('leaveCount').textContent = data.leave || 0;
+                    }
+                })
+                .catch(err => console.error('Error loading counts:', err));
+        }
+
+        // Load overview totals: students, lecturers, employees
+        function loadOverviewTotals() {
+            // students
+            fetch('/get_students_list', { credentials: 'same-origin' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        if (document.getElementById('totalStudents')) document.getElementById('totalStudents').textContent = data.count || data.students.length || 0;
+                    }
+                })
+                .catch(() => {});
+
+            // lecturers
+            fetch('/get_lecturers_list', { credentials: 'same-origin' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        if (document.getElementById('totalLecturers')) document.getElementById('totalLecturers').textContent = data.count || data.lecturers.length || 0;
+                    }
+                })
+                .catch(() => {});
+
+            // employees
+            fetch('/get_employees_admin_list', { credentials: 'same-origin' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        if (document.getElementById('totalEmployees')) document.getElementById('totalEmployees').textContent = data.count || data.employees.length || 0;
+                    }
+                })
+                .catch(() => {});
+        }
+
+        function viewStudent(studentId) {
+            fetch(`/get_student/${studentId}`, { credentials: 'same-origin' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const s = data.student;
+                        alert(`Student: ${s.name}\nEmail: ${s.email}\nPhone: ${s.phone}\nParent Contact: ${s.parent_contact || 'N/A'}`);
+                    } else {
+                        alert('Student not found');
+                    }
+                })
+                .catch(err => console.error(err));
+        }
+
+        function viewEmployee(empId) {
+            fetch(`/get_employee/${empId}`, { credentials: 'same-origin' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const e = data.employee;
+                        alert(`Employee: ${e.name}\nPosition: ${e.position}\nEmail: ${e.email}`);
+                    } else {
+                        alert('Employee not found');
+                    }
+                })
+                .catch(err => console.error(err));
+        }
+
+        // Open edit modal and populate fields
+        function openEditEmployeeModal(empId) {
+            fetch(`/get_employee/${empId}`, { credentials: 'same-origin' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const e = data.employee;
+                        document.getElementById('edit_emp_id').value = e._id;
+                        document.getElementById('edit_emp_name').value = e.name || '';
+                        document.getElementById('edit_emp_email').value = e.email || '';
+                        document.getElementById('edit_emp_phone').value = e.phone || '';
+                        document.getElementById('edit_emp_position').value = e.position || '';
+                        document.getElementById('edit_emp_salary').value = e.salary || '';
+                        document.getElementById('edit_emp_status').value = e.status || 'Active';
+
+                        // Show bootstrap modal
+                        const modalEl = document.getElementById('employeeEditModal');
+                        const modal = new bootstrap.Modal(modalEl);
+                        modal.show();
+                    } else {
+                        alert('Employee not found');
+                    }
+                })
+                .catch(err => console.error(err));
+        }
+
+        function submitEditEmployee(e) {
+            e.preventDefault();
+            const empId = document.getElementById('edit_emp_id').value;
+            const payload = {
+                name: document.getElementById('edit_emp_name').value,
+                email: document.getElementById('edit_emp_email').value,
+                phone: document.getElementById('edit_emp_phone').value,
+                position: document.getElementById('edit_emp_position').value,
+                salary: document.getElementById('edit_emp_salary').value,
+                status: document.getElementById('edit_emp_status').value
+            };
+
+            fetch(`/update_employee/${empId}`, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // hide modal
+                    const modalEl = document.getElementById('employeeEditModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+
+                    loadEmployeesAdminList();
+                    loadEmployeesList();
+                    loadOverviewTotals();
+                    alert('✓ Employee updated successfully');
+                } else {
+                    alert('Error updating employee: ' + (data.message || 'Unknown'));
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Error updating employee');
+            });
+        }
+
+
+
+        // =========== Punch In/Out Functions ===========
+        function loadTodaysPunchRecords() {
+            fetch('/get_todays_punch_records', { credentials: 'same-origin' })
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.getElementById('todayPunchTable');
+                    if (data.status === 'success' && data.punches && data.punches.length > 0) {
+                        tableBody.innerHTML = data.punches.map(punch => `
+                            <tr>
+                                <td>${punch.emp_name}</td>
+                                <td>${punch.punch_in_time}</td>
+                                <td>${punch.punch_out_time || '-'}</td>
+                                <td>${punch.hours_worked || '-'}</td>
+                                <td><span class="badge bg-${getStatusBadge(punch.status)}">${punch.status}</span></td>
+                                <td>
+                                    ${punch.punch_out_time ? '-' : '<button class="btn btn-sm btn-warning" onclick="editPunch(\''+punch._id+'\')"><i class="fas fa-edit"></i></button>'}
+                                </td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No punch records for today</td></tr>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('todayPunchTable').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error loading data</td></tr>';
+                });
+        }
+
+        function getStatusBadge(status) {
+            const statuses = {
+                'On Time': 'success',
+                'Late': 'warning',
+                'Very Late': 'danger',
+                'Active': 'info',
+                'Completed': 'success'
+            };
+            return statuses[status] || 'secondary';
+        }
+
+        function punchIn() {
+            const empId = document.getElementById('punch_employee').value;
+            const time = document.getElementById('punch_time').value;
+            const notes = document.getElementById('punch_notes').value;
+
+            if (!empId) {
+                alert('Please select an employee');
+                return;
+            }
+
+            fetch('/punch_in', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    employee_id: empId,
+                    punch_time: time,
+                    notes: notes
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('✓ Punch In Recorded Successfully');
+                    document.getElementById('punch_notes').value = '';
+                    loadTodaysPunchRecords();
+                    loadTodaysPunchSummary();
+                    loadRecentPunchDetails();
+                    loadEmployeeOfDay();
+                } else {
+                    alert('❌ Error: ' + (data.message || 'Failed to record punch in'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('❌ Error recording punch in');
+            });
+        }
+
+        function punchOut() {
+            const empId = document.getElementById('punch_employee').value;
+            const time = document.getElementById('punch_time').value;
+            const notes = document.getElementById('punch_notes').value;
+
+            if (!empId) {
+                alert('Please select an employee');
+                return;
+            }
+
+            fetch('/punch_out', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    employee_id: empId,
+                    punch_time: time,
+                    notes: notes
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('✓ Punch Out Recorded Successfully');
+                    document.getElementById('punch_notes').value = '';
+                    loadTodaysPunchRecords();
+                    loadTodaysPunchSummary();
+                    loadRecentPunchDetails();
+                    loadEmployeeOfDay();
+                } else {
+                    alert('❌ Error: ' + (data.message || 'Failed to record punch out'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('❌ Error recording punch out');
+            });
+        }
+
+        function editPunch(punchId) {
+            const newTime = prompt('Enter new punch time (HH:MM):');
+            if (!newTime) return;
+
+            fetch('/edit_punch', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    punch_id: punchId,
+                    new_time: newTime
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('✓ Punch record updated');
+                    loadTodaysPunchRecords();
+                    loadRecentPunchDetails();
+                } else {
+                    alert('❌ Error: ' + (data.message || 'Failed to update punch'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('❌ Error updating punch');
+            });
+        }
+
+        // =========== Attendance Records Functions ===========
+        function filterAttendanceRecords() {
+            const empId = document.getElementById('filter_employee').value;
+            const fromDate = document.getElementById('filter_from_date').value;
+            const toDate = document.getElementById('filter_to_date').value;
+
+            fetch('/get_attendance_records', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    employee_id: empId,
+                    from_date: fromDate,
+                    to_date: toDate
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const tableBody = document.getElementById('attendanceRecordsTable');
+                if (data.status === 'success' && data.records && data.records.length > 0) {
+                    tableBody.innerHTML = data.records.map(record => `
+                        <tr>
+                            <td>${record.emp_name}</td>
+                            <td>${record.date}</td>
+                            <td>${record.punch_in || '-'}</td>
+                            <td>${record.punch_out || '-'}</td>
+                            <td>${record.hours_worked || '-'}</td>
+                            <td><span class="badge bg-${getStatusBadge(record.status)}">${record.status}</span></td>
+                            <td>${record.notes || '-'}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No attendance records found</td></tr>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('attendanceRecordsTable').innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error loading records</td></tr>';
+            });
+        }
+
+        // =========== Mark Attendance Functions ===========
+        function markAttendance() {
+            const date = document.getElementById('mark_date').value;
+            const empId = document.getElementById('mark_employee').value;
+            const status = document.getElementById('mark_status').value;
+            const reason = document.getElementById('mark_reason').value;
+
+            if (!date || !empId || !status) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            fetch('/mark_attendance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    date: date,
+                    employee_id: empId,
+                    status: status,
+                    reason: reason
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('✓ Attendance marked successfully');
+                    document.getElementById('mark_reason').value = '';
+                    loadMarkedAttendance();
+                    loadTodaysPunchSummary();
+                    loadEmployeeOfDay();
+                } else {
+                    alert('❌ Error: ' + (data.message || 'Failed to mark attendance'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('❌ Error marking attendance');
+            });
+        }
+
+        function loadMarkedAttendance() {
+            const today = new Date().toISOString().split('T')[0];
+
+            fetch('/get_marked_attendance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date: today })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const tableBody = document.getElementById('markedAttendanceTable');
+                if (data.status === 'success' && data.records && data.records.length > 0) {
+                    tableBody.innerHTML = data.records.map(record => `
+                        <tr>
+                            <td>${record.emp_name}</td>
+                            <td><span class="badge bg-${getStatusBadge(record.status)}">${record.status}</span></td>
+                            <td>${record.reason || '-'}</td>
+                            <td>${new Date(record.marked_at).toLocaleTimeString()}</td>
+                            <td>
+                                <button class="btn btn-sm btn-danger" onclick="deleteMarkedAttendance('${record._id}')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No marked attendance for today</td></tr>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('markedAttendanceTable').innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading data</td></tr>';
+            });
+        }
+
+        function deleteMarkedAttendance(recordId) {
+            if (!confirm('Are you sure you want to delete this attendance record?')) return;
+
+            fetch('/delete_marked_attendance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ record_id: recordId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('✓ Record deleted');
+                    loadMarkedAttendance();
+                    loadTodaysPunchSummary();
+                } else {
+                    alert('❌ Error deleting record');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('❌ Error deleting record');
+            });
+        }
+
+        function viewPunchDetails(empId) {
+            alert('View punch details for employee: ' + empId);
+            // This can be expanded to show more detailed punch information
+        }
+
+        function loadAdminAnnouncements() {
+            fetch('/get_admin_announcements')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const tableBody = document.getElementById('announcementsList');
+                        tableBody.innerHTML = '';
+
+                        if (data.announcements && data.announcements.length > 0) {
+                            data.announcements.forEach(ann => {
+                                const statusBadge = ann.status === 'scheduled' ? 'bg-warning' : 'bg-success';
+                                const statusText = ann.status === 'scheduled' ? 'Scheduled' : 'Published';
+                                
+
+                // Employee Edit Modal HTML
+                const modalHtml = `
+                <div class="modal fade" id="employeeEditModal" tabindex="-1" aria-labelledby="employeeEditModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="employeeEditModalLabel">Edit Employee</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <form id="employeeEditForm" onsubmit="submitEditEmployee(event)">
+                            <div class="modal-body">
+                                <input type="hidden" id="edit_emp_id" />
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Name</label>
+                                        <input id="edit_emp_name" class="form-control" />
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Email</label>
+                                        <input id="edit_emp_email" type="email" class="form-control" />
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Phone</label>
+                                        <input id="edit_emp_phone" class="form-control" />
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Position</label>
+                                        <input id="edit_emp_position" class="form-control" />
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Salary</label>
+                                        <input id="edit_emp_salary" type="number" class="form-control" />
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Status</label>
+                                        <select id="edit_emp_status" class="form-control">
+                                            <option>Active</option>
+                                            <option>Inactive</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="submit" class="btn btn-primary">Save changes</button>
+                            </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                `;
+
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td>${ann.title}</td>
+                                    <td>${ann.semester}</td>
+                                    <td>${ann.publish_date}</td>
+                                    <td><span class="badge ${statusBadge}">${statusText}</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-info" onclick="viewAnnouncement('${ann._id}', '${ann.results_file || ''}')">
+                                            <i class="fas fa-eye"></i> View
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteAnnouncement('${ann._id}')">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </td>
+                                `;
+                                tableBody.appendChild(row);
+                            });
+                        } else {
+                            tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No announcements yet</td></tr>';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    const tableBody = document.getElementById('announcementsList');
+                    tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Failed to load announcements</td></tr>';
+                });
+        }
+
+        function submitResults(event) {
+            event.preventDefault();
+
+            const semester = document.getElementById('semester').value;
+            const academicYear = document.getElementById('academic_year').value;
+            const title = document.getElementById('announcement_title').value;
+            const message = document.getElementById('announcement_message').value;
+            const publishDate = document.getElementById('publish_date').value;
+            const publishTime = document.getElementById('publish_time').value;
+            const resultsFile = document.getElementById('results_file').files[0];
+
+            // Validate inputs
+            if (!semester || !academicYear || !title || !message || !publishDate || !publishTime || !resultsFile) {
+                alert('Please fill in all fields and select a file');
+                return;
+            }
+
+            // Validate that date and time are in the future
+            const scheduledDateTime = new Date(`${publishDate}T${publishTime}`);
+            const now = new Date();
+
+            if (scheduledDateTime <= now) {
+                alert('Please select a future date and time for publishing results.');
+                return;
+            }
+
+            // Create FormData
+            const formData = new FormData();
+            formData.append('semester', semester);
+            formData.append('academic_year', academicYear);
+            formData.append('title', title);
+            formData.append('message', message);
+            formData.append('publish_date', publishDate);
+            formData.append('publish_time', publishTime);
+            formData.append('results_file', resultsFile);
+
+            // Show loading
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
+
+            // Send to backend
+            fetch('/publish_results', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+
+                if (data.status === 'success') {
+                    alert('✓ Results published successfully!\n\nFile: ' + resultsFile.name + '\n\nStudents will see this after the scheduled date.');
+                    
+                    // Reset form
+                    document.getElementById('resultsForm').reset();
+                    
+                    // Reload announcements
+                    loadAdminAnnouncements();
+                } else {
+                    alert('❌ Error: ' + (data.message || 'Failed to publish results'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                alert('❌ Error publishing results. Please check the console for details.');
+            });
+        }
+
+        function viewAnnouncement(announcementId, fileName) {
+            if (fileName) {
+                // Download the file
+                window.location.href = `/static/uploads/${fileName}`;
+            } else {
+                alert('No file attached to this announcement');
+            }
+        }
+
+        function deleteAnnouncement(announcementId) {
+            if (!confirm('Are you sure you want to delete this announcement?')) {
+                return;
+            }
+
+            fetch(`/delete_announcement/${announcementId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('✓ Announcement deleted successfully');
+                    loadAdminAnnouncements();
+                } else {
+                    alert('❌ Error: ' + (data.message || 'Failed to delete announcement'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('❌ Error deleting announcement');
+            });
+        }
+
+        function generateMarksCard() {
+            const studentId = document.getElementById('marks_student_id').value;
+            if (studentId) {
+                window.location.href = `/generate_marks_card/${studentId}`;
+            } else {
+                alert('Please enter Student ID');
+            }
+        }
+
+        function generatePayslip() {
+            const empId = document.getElementById('payslip_emp_id').value;
+            if (empId) {
+                window.location.href = `/generate_payslip/${empId}`;
+            } else {
+                alert('Please enter Employee ID');
+            }
+        }
+    </script>
+</body>
+</html>

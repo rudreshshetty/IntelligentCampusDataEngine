@@ -1,0 +1,1868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0d47a1 0%, #1565c0 25%, #1976d2 50%, #1e88e5 75%, #2196f3 100%);
+            background-attachment: fixed;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            position: relative;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 10% 40%, rgba(255,255,255,0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 90% 60%, rgba(0,0,0,0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .container-wrapper {
+            display: flex;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px 0;
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 1000;
+        }
+        .sidebar-brand {
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+            padding: 20px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+        .sidebar-brand img {
+            height: 55px;
+            width: auto;
+            display: block;
+            margin-right: 0;
+            object-fit: contain;
+            transition: all 0.3s ease;
+            filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.2));
+        }
+        .sidebar-brand:hover img {
+            height: 58px;
+            filter: drop-shadow(0 3px 10px rgba(255, 255, 255, 0.3));
+        }
+        .sidebar-brand-text {
+            line-height: 1.3;
+            font-size: 16px;
+            flex-grow: 0;
+            font-weight: 700;
+            text-align: center;
+            color: white;
+        }
+        .sidebar-brand:hover {
+            color: white;
+        }
+        .sidebar-nav {
+            margin-top: 20px;
+            list-style: none;
+            padding: 0;
+            width: 100%;
+        }
+        .sidebar-nav li {
+            margin: 0;
+        }
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            padding: 15px 20px;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            cursor: pointer;
+            white-space: nowrap;
+            width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .sidebar-nav a:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding-left: 25px;
+        }
+        .sidebar-nav a.active {
+            background: rgba(255, 255, 255, 0.25);
+            color: white;
+            border-left: 4px solid white;
+            padding-left: 16px;
+        }
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            flex: 1;
+        }
+        .section {
+            display: none;
+        }
+        .section.active {
+            display: block;
+        }
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+            padding: 15px;
+            font-weight: 600;
+        }
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            color: white;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .stat-card i {
+            font-size: 30px;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .attend-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .assign-card { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .quiz-card { background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%); }
+        .event-card { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .fees-card { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        
+        @media (min-width: 768px) {
+            .col-md-2-4 { flex: 0 0 calc(20% - 0.5rem); }
+        }
+        @media (max-width: 767px) {
+            .col-md-2-4 { flex: 0 0 100%; }
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .table-responsive {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .table {
+            margin-bottom: 0;
+        }
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e9ecef;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 200px;
+            }
+            .main-content {
+                margin-left: 200px;
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-wrapper">
+        <!-- Vertical Sidebar Navigation -->
+        <aside class="sidebar">
+            <a class="sidebar-brand" href="#">
+                <img src="{{ url_for('static', filename='logos/sapthagiri_logo.svg') }}" alt="Sapthagiri Logo">
+                <div class="sidebar-brand-text">Sapthagiri NPS University</div>
+            </a>
+            <ul class="sidebar-nav">
+                <li>
+                    <a href="javascript:void(0);" data-section="overview" class="active" onclick="showSection(this,'overview');return false;">
+                        <i class="fas fa-home"></i> Overview
+                    </a>
+                </li>
+                <li>
+                    <a href="javascript:void(0);" data-section="announcements" onclick="showSection(this,'announcements');return false;">
+                        <i class="fas fa-bell"></i> Announcements
+                    </a>
+                </li>
+                <li>
+                    <a href="javascript:void(0);" data-section="attendance" onclick="showSection(this,'attendance');return false;">
+                        <i class="fas fa-calendar-check"></i> Attendance
+                    </a>
+                </li>
+                <li>
+                    <a href="javascript:void(0);" data-section="assignments" onclick="showSection(this,'assignments');return false;">
+                        <i class="fas fa-clipboard-list"></i> Assignments
+                    </a>
+                </li>
+                <li>
+                    <a href="javascript:void(0);" data-section="quizzes" onclick="showSection(this,'quizzes');return false;">
+                        <i class="fas fa-question-circle"></i> Quizzes
+                    </a>
+                </li>
+                <li>
+                    <a href="javascript:void(0);" data-section="results" onclick="showSection(this,'results');return false;">
+                        <i class="fas fa-star"></i> Results
+                    </a>
+                </li>
+                <li>
+                    <a href="javascript:void(0);" data-section="events" onclick="showSection(this,'events');return false;">
+                        <i class="fas fa-calendar-alt"></i> Events
+                    </a>
+                </li>
+                <li>
+                    <a href="javascript:void(0);" data-section="fees" onclick="showSection(this,'fees');return false;">
+                        <i class="fas fa-rupee-sign"></i> Fees
+                    </a>
+                </li>
+                <li>
+                    <a href="/logout" class="">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+        <h3 class="mb-4">Welcome, Student!</h3>
+
+        <!-- Overview Section -->
+        <section id="overview" class="section active mb-4">
+            <h3 class="mb-4">Welcome, Student!</h3>
+            <div class="row">
+                <div class="col-md-2-4 col-sm-6">
+                    <div class="stat-card attend-card">
+                        <i class="fas fa-calendar-check"></i>
+                        <h5>Attendance</h5>
+                        <p class="mb-0">85%</p>
+                    </div>
+                </div>
+                <div class="col-md-2-4 col-sm-6">
+                    <div class="stat-card assign-card">
+                        <i class="fas fa-clipboard-list"></i>
+                        <h5>Assignments</h5>
+                        <p class="mb-0">3 Pending</p>
+                    </div>
+                </div>
+                <div class="col-md-2-4 col-sm-6">
+                    <div class="stat-card quiz-card">
+                        <i class="fas fa-question-circle"></i>
+                        <h5>Quizzes</h5>
+                        <p class="mb-0">4 Pending</p>
+                    </div>
+                </div>
+                <div class="col-md-2-4 col-sm-6">
+                    <div class="stat-card event-card">
+                        <i class="fas fa-calendar-alt"></i>
+                        <h5>Events</h5>
+                        <p class="mb-0">5 Upcoming</p>
+                    </div>
+                </div>
+                <div class="col-md-2-4 col-sm-6">
+                    <div class="stat-card fees-card">
+                        <i class="fas fa-rupee-sign"></i>
+                        <h5>Fees Status</h5>
+                        <p class="mb-0">Pending</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Announcements Section -->
+        <section id="announcements" class="section mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-bell"></i> Latest Announcements & Results
+                </div>
+                <div class="card-body">
+                    <div id="announcementsList">
+                        <p class="text-muted">Loading announcements...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Absence Notifications Section -->
+        <section id="notifications" class="section mb-4">
+            <div class="card">
+                <div class="card-header" style="background-color: #dc3545; color: white;">
+                    <i class="fas fa-exclamation-triangle"></i> Absence Alerts
+                </div>
+                <div class="card-body">
+                    <div id="notificationsList">
+                        <p class="text-muted">Loading notifications...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!-- Attendance Section -->
+        <section id="attendance" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-calendar-check"></i> Attendance
+                </div>
+                <div class="card-body">
+                    <!-- Subject-wise Attendance Summary -->
+                    <div class="row mb-4">
+                        <div class="col-md-2 col-sm-6 mb-2">
+                            <div style="border: 2px solid #43e97b; padding: 12px; border-radius: 8px; text-align: center; background: #f0fdf4;">
+                                <h6 class="mb-1">Mathematics</h6>
+                                <p style="font-size: 18px; font-weight: bold; color: #43e97b; margin: 0;">85%</p>
+                                <small class="text-muted">17/20 Classes</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2 col-sm-6 mb-2">
+                            <div style="border: 2px solid #43e97b; padding: 12px; border-radius: 8px; text-align: center; background: #f0fdf4;">
+                                <h6 class="mb-1">Physics</h6>
+                                <p style="font-size: 18px; font-weight: bold; color: #43e97b; margin: 0;">90%</p>
+                                <small class="text-muted">18/20 Classes</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2 col-sm-6 mb-2">
+                            <div style="border: 2px solid #43e97b; padding: 12px; border-radius: 8px; text-align: center; background: #f0fdf4;">
+                                <h6 class="mb-1">Chemistry</h6>
+                                <p style="font-size: 18px; font-weight: bold; color: #ffc107; margin: 0;">75%</p>
+                                <small class="text-muted">15/20 Classes</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2 col-sm-6 mb-2">
+                            <div style="border: 2px solid #43e97b; padding: 12px; border-radius: 8px; text-align: center; background: #f0fdf4;">
+                                <h6 class="mb-1">Data Structures</h6>
+                                <p style="font-size: 18px; font-weight: bold; color: #43e97b; margin: 0;">88%</p>
+                                <small class="text-muted">22/25 Classes</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2 col-sm-6 mb-2">
+                            <div style="border: 2px solid #43e97b; padding: 12px; border-radius: 8px; text-align: center; background: #f0fdf4;">
+                                <h6 class="mb-1">Database Mgmt</h6>
+                                <p style="font-size: 18px; font-weight: bold; color: #43e97b; margin: 0;">92%</p>
+                                <small class="text-muted">23/25 Classes</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2 col-sm-6 mb-2">
+                            <div style="border: 2px solid #43e97b; padding: 12px; border-radius: 8px; text-align: center; background: #f0fdf4;">
+                                <h6 class="mb-1">Web Development</h6>
+                                <p style="font-size: 18px; font-weight: bold; color: #43e97b; margin: 0;">80%</p>
+                                <small class="text-muted">20/25 Classes</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Detailed Attendance Records -->
+                    <h6 class="mb-3"><i class="fas fa-list"></i> Detailed Records</h6>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Subject</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                        <tr>
+                            <td colspan="3" class="text-center text-muted">
+                                <i class="fas fa-spinner fa-spin"></i> Loading attendance...
+                            </td>
+                        </tr>
+                    </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Assignments Section -->
+        <section id="assignments" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-clipboard-list"></i> Assignments
+                </div>
+                <div class="card-body">
+                    <h5>Upload Assignment</h5>
+                    <form method="POST" action="/upload_assignment" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="assignment" class="form-label">Select PDF File</label>
+                            <input type="file" class="form-control" id="assignment" name="assignment" 
+                                   accept=".pdf" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-upload"></i> Upload
+                        </button>
+                    </form>
+
+                    <hr>
+                    <h5>Your Assignments</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Deadline</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Python Project</td>
+                                    <td>2026-02-28</td>
+                                    <td><span class="badge bg-warning">Pending</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Data Structures Report</td>
+                                    <td>2026-02-25</td>
+                                    <td><span class="badge bg-info">Submitted</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quiz Section -->
+        <section id="quizzes" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-question-circle"></i> Online Quizzes
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs mb-4" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="pending-quizzes-tab" data-bs-toggle="tab" data-bs-target="#pending-quizzes" type="button">Pending Quizzes</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="completed-quizzes-tab" data-bs-toggle="tab" data-bs-target="#completed-quizzes" type="button">Completed Quizzes</button>
+                        </li>
+                    </ul>
+
+                    <!-- Pending Quizzes Tab -->
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="pending-quizzes">
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="pendingQuizzesTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Quiz Name</th>
+                                            <th>Subject</th>
+                                            <th>Lecturer</th>
+                                            <th>Questions</th>
+                                            <th>Total Marks</th>
+                                            <th>Deadline</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pendingQuizzesList">
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted">
+                                                <i class="fas fa-spinner fa-spin"></i> Loading quizzes...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Completed Quizzes Tab -->
+                        <div class="tab-pane fade" id="completed-quizzes">
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="completedQuizzesTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Quiz Name</th>
+                                            <th>Subject</th>
+                                            <th>Lecturer</th>
+                                            <th>Total Marks</th>
+                                            <th>Marks Obtained</th>
+                                            <th>Percentage</th>
+                                            <th>Correct Answers</th>
+                                            <th>Wrong Answers</th>
+                                            <th>Attempted on</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="completedQuizzesList">
+                                        <tr>
+                                            <td colspan="10" class="text-center text-muted">
+                                                <i class="fas fa-spinner fa-spin"></i> Loading results...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Assigned Marks Section -->
+                <section id="assigned-marks" class="mt-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-award"></i> Assigned Marks
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="assignedMarksTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Subject</th>
+                                            <th>Marks</th>
+                                            <th>Assigned Date</th>
+                                            <th>Lecturer</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-star"></i> Results
+                </div>
+                <div class="card-body">
+                    <!-- Internals Marks -->
+                    <h5 class="mb-3">
+                        <i class="fas fa-edit"></i> Internals Marks
+                        <span class="badge bg-success" style="float: right;">Visible</span>
+                    </h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="internalsMarksTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>Marks (Out of 50)</th>
+                                    <th>Status</th>
+                                    <th>Assigned On</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Loading internals marks...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <hr>
+
+                    <!-- Exam Marks -->
+                    <h5 class="mb-3">
+                        <i class="fas fa-file-check"></i> Exam Marks
+                        <span class="badge bg-warning" style="float: right;">With Approval</span>
+                    </h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="examMarksTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>Marks (Out of 50)</th>
+                                    <th>Approval Status</th>
+                                    <th>Updated On</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Loading exam marks...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="alert alert-info mt-3">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Internals Marks:</strong> Visible immediately after submission.<br>
+                        <strong>Exam Marks:</strong> Visible only after admin approval.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Events Section -->
+        <section id="events" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-calendar-alt"></i> Events & Announcements
+                </div>
+                <div class="card-body">
+                    <div class="row" id="eventsContainer">
+                        <!-- Events loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Fees Section -->
+        <section id="fees" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-rupee-sign"></i> Fees Information & Online Payment
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <strong>💡 Tip:</strong> Click "Pay Now" to make online payment for pending fees using UPI.
+                    </div>
+
+                    <h5>Fee Breakdown</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Fee Type</th>
+                                    <th>Amount</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Loading fees...
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-light">
+                                    <th colspan="2">Total Pending: <strong>₹65,000</strong></th>
+                                    <th colspan="3"></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <hr>
+                    <h5>Payment History</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Transaction ID</th>
+                                    <th>Amount</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>TXN20260210120345</code></td>
+                                    <td>₹3,000</td>
+                                    <td>2026-02-10</td>
+                                    <td><span class="badge bg-success">Completed</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Success Receipt Modal -->
+    <div class="modal fade" id="receiptModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="fas fa-check-circle"></i> Payment Successful</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check"></i> Your payment has been received successfully!</h6>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h6>Receipt Details</h6>
+                        <table class="table table-sm mb-0">
+                            <tr>
+                                <td><strong>Fee Type:</strong></td>
+                                <td id="receiptFeeType">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Amount Paid:</strong></td>
+                                <td id="receiptAmount">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Transaction ID:</strong></td>
+                                <td><code id="receiptTxnId">-</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Payment Date:</strong></td>
+                                <td id="receiptDate">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Payment Method:</strong></td>
+                                <td id="receiptMethod">-</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-success" onclick="downloadReceipt()">
+                        <i class="fas fa-download"></i> Download Receipt
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiz Modal -->
+    <div class="modal fade" id="quizModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title"><i class="fas fa-question-circle"></i> <span id="quizTitle">Quiz</span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-primary">
+                        <strong>Quiz Information</strong>
+                        <div id="quizInfo" style="margin-top: 10px;">
+                            <!-- Dynamically filled -->
+                        </div>
+                    </div>
+
+                    <h6 class="mb-3"><i class="fas fa-list-ol"></i> Quiz Questions</h6>
+                    <form id="quizForm">
+                        <div id="questionsContainer">
+                            <!-- Questions will be dynamically inserted -->
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-info" onclick="submitQuiz()">
+                        <i class="fas fa-paper-plane"></i> Submit Quiz
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiz Result Modal -->
+    <div class="modal fade" id="quizResultModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="fas fa-check-circle"></i> Quiz Submitted Successfully</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        <h6>Your Score</h6>
+                        <div style="font-size: 48px; font-weight: bold; color: #43e97b; margin: 20px 0;">
+                            <span id="resultMarks">0</span>/<span id="resultTotal">0</span>
+                        </div>
+                        <p style="font-size: 20px; color: #666;">
+                            <span id="resultPercentage">0</span>%
+                        </p>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong>Quiz Submission Details:</strong>
+                        <table class="table table-sm mb-0">
+                            <tr>
+                                <td><strong>Quiz Name:</strong></td>
+                                <td id="resultQuizName">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Lecturer:</strong></td>
+                                <td id="resultLecturer">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Questions:</strong></td>
+                                <td id="resultQuestions">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Submitted On:</strong></td>
+                                <td id="resultDate">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Submission ID:</strong></td>
+                                <td><code id="resultSubmissionId">-</code></td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <p class="mb-0">Your quiz has been submitted successfully. Your marks will be reviewed by the lecturer and updated soon.</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="fas fa-lock"></i> Secure Online Payment</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <strong>💳 Payment Details</strong>
+                        <div id="paymentInfo" style="margin-top: 10px;">
+                            <!-- Dynamically filled -->
+                        </div>
+                    </div>
+
+                    <h6>Select Payment Method</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-check payment-option">
+                                <input class="form-check-input" type="radio" name="paymentMethod" id="creditCard" value="Credit/Debit Card" checked onclick="console.log('radio clicked: creditCard')">
+                                <label class="form-check-label w-100" for="creditCard">
+                                    <i class="fas fa-credit-card"></i> Credit/Debit Card
+                                </label>
+                                <small class="text-muted">VISA, Mastercard, RuPay</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check payment-option">
+                                <input class="form-check-input" type="radio" name="paymentMethod" id="netBanking" value="Net Banking" onclick="console.log('radio clicked: netBanking')">
+                                <label class="form-check-label w-100" for="netBanking">
+                                    <i class="fas fa-university"></i> Net Banking
+                                </label>
+                                <small class="text-muted">All major banks</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check payment-option">
+                                <input class="form-check-input" type="radio" name="paymentMethod" id="upi" value="UPI" onclick="console.log('radio clicked: upi')">
+                                <label class="form-check-label w-100" for="upi">
+                                    <i class="fas fa-mobile-alt"></i> UPI
+                                </label>
+                                <small class="text-muted">Google Pay, PhonePe, Paytm</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check payment-option">
+                                <input class="form-check-input" type="radio" name="paymentMethod" id="wallet" value="Digital Wallet" onclick="console.log('radio clicked: wallet')">
+                                <label class="form-check-label w-100" for="wallet">
+                                    <i class="fas fa-wallet"></i> Digital Wallet
+                                </label>
+                                <small class="text-muted">Paytm, Freecharge</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <!-- UPI Payment Display -->
+                    <div id="upiPaymentDisplay" style="display:none;" class="alert alert-warning">
+                        <h6><i class="fas fa-mobile-alt"></i> UPI Payment - Scan & Pay</h6>
+                        <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 10px;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>📱 Scan QR Code:</strong></p>
+                                    <div style="background: white; padding: 15px; border-radius: 6px; border: 2px solid #ff9800; text-align: center;">
+                                        <div id="qrCodeContainer" style="margin: 10px 0;">
+                                            <canvas id="qrCode" style="max-width: 250px; width: 100%;"></canvas>
+                                        </div>
+                                        <small style="color: #666;">Scan with any UPI app</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Manual Payment:</strong></p>
+                                    <div style="background: white; padding: 12px; border-radius: 6px; border: 2px dashed #ff9800; margin-bottom: 10px;">
+                                        <p style="margin: 0; font-size: 13px;"><strong>UPI ID:</strong></p>
+                                        <code style="font-size: 16px; font-weight: bold; color: #ff5722; word-break: break-all;">7899784519@nyes</code>
+                                    </div>
+                                    <p style="margin-top: 10px; font-size: 13px;">
+                                        <strong>Steps to Pay Manually:</strong><br>
+                                        1. Open any UPI app<br>
+                                        2. Enter UPI ID<br>
+                                        3. Amount: ₹<span id="upiAmount">0</span><br>
+                                        4. Verify & Pay<br>
+                                        5. You'll get confirmation
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-success">
+                        <strong>🔒 Secure Payment:</strong> Your payment is encrypted and secure. We use industry-standard SSL encryption.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success btn-lg" onclick="processPayment()">
+                        <i class="fas fa-check-circle"></i> Proceed to Payment
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .payment-option {
+            border: 2px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .payment-option:hover {
+            border-color: #43e97b;
+            background: #f0fdf4;
+        }
+        .payment-option input:checked ~ label {
+            color: #43e97b;
+            font-weight: 600;
+        }
+        #qrCodeContainer {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 3px solid #ff9800;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 280px;
+        }
+        #qrCode {
+            max-width: 100%;
+            height: auto;
+        }
+        .modal-lg {
+            max-width: 900px;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Initialize sidebar navigation
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarLinks = document.querySelectorAll('.sidebar-nav a[data-section]');
+            
+            sidebarLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const sectionId = this.getAttribute('data-section');
+                    showSection(this, sectionId);
+                });
+            });
+        });
+
+        function showSection(elem, sectionId) {
+            // Hide all sections
+            const sections = document.querySelectorAll('.section');
+            sections.forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // Show the selected section
+            const selectedSection = document.getElementById(sectionId);
+            if (selectedSection) {
+                selectedSection.classList.add('active');
+            }
+
+            // Update active nav link
+            const navLinks = document.querySelectorAll('.sidebar-nav a[data-section]');
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+            });
+
+            // Add active class to clicked link
+            if (elem && elem.classList) {
+                elem.classList.add('active');
+            }
+
+            console.log('Section changed to:', sectionId);
+
+            // Load announcements when announcements section is clicked
+            if (sectionId === 'announcements') {
+                loadAnnouncements();
+            }
+
+            // Load attendance when attendance section is clicked
+            if (sectionId === 'attendance') {
+                loadAttendance();
+            }
+
+            // Load assignments when assignments section is clicked
+            if (sectionId === 'assignments') {
+                loadAssignments();
+            }
+
+            // Load marks when results section is clicked
+            if (sectionId === 'results') {
+                loadInternalsMarks();
+                loadExamMarks();
+            }
+
+            // Load quizzes when quizzes section is clicked
+            if (sectionId === 'quizzes') {
+                loadPendingQuizzes();
+                loadCompletedQuizzes();
+            }
+
+            // Load fees when fees section is clicked
+            if (sectionId === 'fees') {
+                loadFees();
+            }
+        }
+        // Fetch assigned marks for logged-in student and populate table
+        function loadAssignedMarks() {
+            fetch('/get_student_marks')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status !== 'success') return;
+                    const marks = data.marks || [];
+                    const tbody = document.querySelector('#assignedMarksTable tbody');
+                    tbody.innerHTML = '';
+                    marks.forEach(m => {
+                        const tr = document.createElement('tr');
+                        const assignedDate = m.assigned_date ? new Date(m.assigned_date).toLocaleString() : '';
+                        tr.innerHTML = `
+                            <td>${m.subject || ''}</td>
+                            <td>${m.marks !== null && m.marks !== undefined ? m.marks : '-'}</td>
+                            <td>${assignedDate}</td>
+                            <td>${m.lecturer_id || '-'}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                })
+                .catch(err => console.error('Error fetching marks', err));
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAssignedMarks();
+            loadEvents();
+        });
+
+        function loadEvents() {
+            fetch('/get_events')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status !== 'success') return;
+                    const events = data.events || [];
+                    const container = document.getElementById('eventsContainer');
+                    container.innerHTML = '';
+                    events.forEach(ev => {
+                        const col = document.createElement('div');
+                        col.className = 'col-md-6 mb-3';
+                        const fileLink = ev.file_url ? `<a href="${encodeURI(ev.file_url)}" target="_blank">View Poster</a>` : '';
+                        col.innerHTML = `
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-calendar"></i> ${ev.title}</h6>
+                                <p class="mb-0">Date: ${ev.date || '-'}</p>
+                                <p class="mb-0">${fileLink}</p>
+                            </div>
+                        `;
+                        container.appendChild(col);
+                    });
+                })
+                .catch(err => console.error('Error loading events', err));
+        }
+let currentFeeId = '';
+let currentFeeType = '';
+let currentAmount = 0;
+let currentTransactionId = '';
+
+function setPaymentDetails(feeId, feeType, amount) {
+    currentFeeId = feeId;
+            currentFeeType = feeType;
+            currentAmount = amount;
+            currentTransactionId = generateTransactionId();
+            
+            const paymentInfo = document.getElementById('paymentInfo');
+            paymentInfo.innerHTML = `
+                <div><strong>Fee Type:</strong> ${feeType}</div>
+                <div><strong>Amount:</strong> ₹${amount.toLocaleString('en-IN')}</div>
+                <div><strong>Transaction ID:</strong> <code>${currentTransactionId}</code></div>
+                <div><strong>Timestamp:</strong> ${new Date().toLocaleString()}</div>
+            `;
+            
+            // Update UPI amount display
+            document.getElementById('upiAmount').textContent = amount;
+            
+            // Generate QR code if UPI is already selected
+            const upiRadio = document.getElementById('upi');
+            if (upiRadio && upiRadio.checked) {
+                generateGoogleChartsQR(amount);
+            }
+        }
+
+        function generateTransactionId() {
+            return 'TXN' + new Date().getTime();
+        }
+
+        // SIMPLIFIED: Show/Hide UPI section based on selection
+        document.addEventListener('change', function(e) {
+            if (e.target.name === 'paymentMethod') {
+                const upiDisplay = document.getElementById('upiPaymentDisplay');
+                console.log('paymentMethod changed to', e.target.value);
+                if (e.target.id === 'upi') {
+                    upiDisplay.style.display = 'block';
+                    // Generate QR code when UPI is selected
+                    const amountElement = document.getElementById('upiAmount');
+                    const amount = amountElement ? amountElement.textContent : '0';
+                    if (amount && amount !== '0') {
+                        generateGoogleChartsQR(amount);
+                    }
+                } else {
+                    upiDisplay.style.display = 'none';
+                }
+            }
+        });
+        
+        // Ensure clicking the whole payment-option box selects the radio
+        document.addEventListener('click', function(e) {
+            const option = e.target.closest('.payment-option');
+            if (!option) return;
+            const radio = option.querySelector('input[type="radio"][name="paymentMethod"]');
+            if (radio) {
+                radio.checked = true;
+                // manually dispatch change in case default didn't fire
+                radio.dispatchEvent(new Event('change')); 
+            }
+        });
+        
+        // Generate QR code using Google Charts (fastest & most reliable)
+        function generateGoogleChartsQR(amount) {
+            try {
+                const upiId = '7899784519@nyes';
+                const upiString = `upi://pay?pa=${upiId}&pn=Sapthagiri%20NPS%20University&am=${amount}&tn=Fee%20Payment`;
+                
+                const qrContainer = document.getElementById('qrCodeContainer');
+                if (!qrContainer) return;
+                
+                const encodedText = encodeURIComponent(upiString);
+                const googleChartsUrl = `https://chart.googleapis.com/chart?chs=250x250&chld=L|0&cht=qr&chl=${encodedText}`;
+                
+                qrContainer.innerHTML = `<img src="${googleChartsUrl}" alt="QR Code" style="max-width: 250px; width: 100%; height: auto; border: 2px solid #333; border-radius: 4px;" />`;
+            } catch(e) {
+                console.error('QR error:', e);
+            }
+        }
+
+        function processPayment() {
+            const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+            
+            // Send payment to backend
+            fetch('/process_payment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    fee_id: currentFeeId,
+                    fee_type: currentFeeType,
+                    amount: currentAmount,
+                    payment_method: paymentMethod,
+                    transaction_id: currentTransactionId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Close payment modal
+                    const paymentModal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+                    paymentModal.hide();
+                    
+                    // Update fee table - mark as paid
+                    const feeRows = document.querySelectorAll('table.table-hover tbody tr');
+                    feeRows.forEach(row => {
+                        if (row.textContent.includes(currentFeeType)) {
+                            // Update status badge
+                            const statusCell = row.querySelector('td:nth-child(4)');
+                            statusCell.innerHTML = '<span class="badge bg-success">Paid</span>';
+                            
+                            // Remove Pay Now button and add dash
+                            const actionCell = row.querySelector('td:nth-child(5)');
+                            actionCell.innerHTML = '<span class="text-muted">—</span>';
+                        }
+                    });
+                    
+                    // Add payment to history
+                    const paymentTable = document.querySelector('table.table-sm tbody');
+                    if (paymentTable) {
+                        const newRow = document.createElement('tr');
+                        newRow.innerHTML = `
+                            <td><code>${currentTransactionId}</code></td>
+                            <td>₹${currentAmount.toLocaleString('en-IN')}</td>
+                            <td>${new Date().toLocaleDateString()}</td>
+                            <td><span class="badge bg-success">Completed</span></td>
+                        `;
+                        paymentTable.insertBefore(newRow, paymentTable.firstChild);
+                    }
+                    
+                    // Show receipt modal
+                    showReceiptModal(data.transaction_id);
+                } else {
+                    alert('Payment failed: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Error processing payment: ' + error);
+            });
+        }
+
+        function showReceiptModal(txnId) {
+            document.getElementById('receiptFeeType').textContent = currentFeeType;
+            document.getElementById('receiptAmount').textContent = '₹' + currentAmount.toLocaleString('en-IN');
+            document.getElementById('receiptTxnId').textContent = currentTransactionId;
+            document.getElementById('receiptDate').textContent = new Date().toLocaleString();
+            document.getElementById('receiptMethod').textContent = document.querySelector('input[name="paymentMethod"]:checked').value;
+            
+            const receiptModal = new bootstrap.Modal(document.getElementById('receiptModal'));
+            receiptModal.show();
+        }
+
+        function downloadReceipt() {
+            window.location.href = `/download_receipt/${currentTransactionId}`;
+        }
+
+        // ==================== QUIZ FUNCTIONS ====================
+        let currentQuizData = {};
+        const sampleQuestions = {
+            'Physics Quiz 1': [
+                { id: 1, question: 'What is the SI unit of force?', options: ['Newton', 'Joule', 'Watt', 'Pascal'], type: 'mcq' },
+                { id: 2, question: 'Which of the following is not a vector quantity?', options: ['Velocity', 'Acceleration', 'Mass', 'Force'], type: 'mcq' },
+                { id: 3, question: 'What is the formula for kinetic energy?', options: ['½mv²', 'mgh', 'mgv', '½mv'], type: 'mcq' }
+            ],
+            'Data Structures Quiz 2': [
+                { id: 1, question: 'What is the time complexity of binary search?', options: ['O(n)', 'O(log n)', 'O(n²)', 'O(1)'], type: 'mcq' },
+                { id: 2, question: 'Which data structure uses LIFO principle?', options: ['Queue', 'Stack', 'Array', 'Linked List'], type: 'mcq' },
+                { id: 3, question: 'What is a balanced binary tree?', options: ['Tree with equal height', 'Tree with all nodes filled', 'Tree with height difference ≤ 1', 'Tree with left skew'], type: 'mcq' }
+            ],
+            'Web Development Quiz 1': [
+                { id: 1, question: 'Which of these is a front-end technology?', options: ['Python', 'JavaScript', 'SQL', 'Java'], type: 'mcq' },
+                { id: 2, question: 'What does CSS stand for?', options: ['Computer Style Sheets', 'Cascading Style Sheets', 'Creative Style System', 'Coded Style Source'], type: 'mcq' },
+                { id: 3, question: 'HTML is a programming language. True or False?', options: ['True', 'False'], type: 'mcq' }
+            ],
+            'Database Management Quiz 1': [
+                { id: 1, question: 'What does SQL stand for?', options: ['Strong Query Language', 'Structured Query Language', 'Statement Query Language', 'Simple Query Language'], type: 'mcq' },
+                { id: 2, question: 'Which command is used to retrieve data from a table?', options: ['PULL', 'GET', 'SELECT', 'FETCH'], type: 'mcq' },
+                { id: 3, question: 'Primary Key ensures uniqueness. True or False?', options: ['True', 'False'], type: 'mcq' }
+            ]
+        };
+
+        function startQuiz(quizName, lecturer, questionCount, totalMarks) {
+            currentQuizData = {
+                quizName: quizName,
+                lecturer: lecturer,
+                questionCount: questionCount,
+                totalMarks: totalMarks
+            };
+
+            document.getElementById('quizTitle').textContent = quizName;
+            const quizInfo = document.getElementById('quizInfo');
+            quizInfo.innerHTML = `
+                <div><strong>Quiz Name:</strong> ${quizName}</div>
+                <div><strong>Lecturer:</strong> ${lecturer}</div>
+                <div><strong>Total Questions:</strong> ${questionCount}</div>
+                <div><strong>Total Marks:</strong> ${totalMarks}</div>
+                <div><strong>Time Limit:</strong> 30 minutes</div>
+            `;
+
+            // Load sample questions
+            const questions = sampleQuestions[quizName] || [];
+            const questionsContainer = document.getElementById('questionsContainer');
+            questionsContainer.innerHTML = '';
+
+            questions.forEach((q, index) => {
+                let questionHtml = `
+                    <div class="card mb-3" style="border-left: 4px solid #17a2b8;">
+                        <div class="card-body">
+                            <h6><strong>Question ${index + 1}:</strong> ${q.question}</h6>
+                            <div class="mt-3">
+                `;
+                
+                q.options.forEach((option, optIndex) => {
+                    questionHtml += `
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="q${q.id}" id="q${q.id}_opt${optIndex}" value="${option}">
+                            <label class="form-check-label" for="q${q.id}_opt${optIndex}">
+                                ${option}
+                            </label>
+                        </div>
+                    `;
+                });
+                
+                questionHtml += `
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                questionsContainer.innerHTML += questionHtml;
+            });
+        }
+
+        function submitQuiz() {
+            const selectedAnswers = [];
+            const form = document.getElementById('quizForm');
+            const formElements = form.querySelectorAll('input[type="radio"]:checked');
+            
+            if (formElements.length === 0) {
+                alert('Please answer at least one question!');
+                return;
+            }
+
+            formElements.forEach(element => {
+                selectedAnswers.push({
+                    question: element.name,
+                    answer: element.value
+                });
+            });
+
+            // Calculate marks (simplified: correct answers = marks / total questions * total marks)
+            const obtainedMarks = Math.floor((selectedAnswers.length / currentQuizData.questionCount) * currentQuizData.totalMarks);
+            const percentage = Math.floor((obtainedMarks / currentQuizData.totalMarks) * 100);
+            const submissionId = 'SUB' + new Date().getTime();
+
+            // Hide quiz modal and show result modal
+            const quizModal = bootstrap.Modal.getInstance(document.getElementById('quizModal'));
+            quizModal.hide();
+
+            // Set result modal data
+            document.getElementById('resultMarks').textContent = obtainedMarks;
+            document.getElementById('resultTotal').textContent = currentQuizData.totalMarks;
+            document.getElementById('resultPercentage').textContent = percentage;
+            document.getElementById('resultQuizName').textContent = currentQuizData.quizName;
+            document.getElementById('resultLecturer').textContent = currentQuizData.lecturer;
+            document.getElementById('resultQuestions').textContent = selectedAnswers.length + '/' + currentQuizData.questionCount;
+            document.getElementById('resultDate').textContent = new Date().toLocaleString();
+            document.getElementById('resultSubmissionId').textContent = submissionId;
+
+            // Show result modal
+            setTimeout(() => {
+                const resultModal = new bootstrap.Modal(document.getElementById('quizResultModal'));
+                resultModal.show();
+            }, 500);
+        }
+
+        // Load announcements & notifications on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAnnouncements();
+            loadNotifications();
+            // also pre-load other sections so data is ready
+            loadAttendance();
+            loadAssignments();
+            loadFees();
+        });
+
+        function loadAnnouncements() {
+            fetch('/get_announcements')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success' && data.announcements.length > 0) {
+                        const announcementsList = document.getElementById('announcementsList');
+                        announcementsList.innerHTML = '';
+
+                        data.announcements.forEach(ann => {
+                            const announcementHtml = `
+                                <div class="card mb-3 border-left-primary">
+                                    <div class="card-body">
+                                        <h5 class="card-title">
+                                            <i class="fas fa-graduation-cap" style="color: #43e97b;"></i> ${ann.title}
+                                        </h5>
+                                        <p class="card-text">${ann.message}</p>
+                                        <div class="row text-muted small">
+                                            <div class="col-md-3">
+                                                <strong>Semester:</strong> ${ann.semester}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <strong>Academic Year:</strong> ${ann.academic_year}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <strong>Published:</strong> ${ann.publish_date}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <strong>Status:</strong> 
+                                                <span class="badge bg-success">Published</span>
+                                            </div>
+                                        </div>
+                                        ${ann.results_file ? `
+                                            <div class="mt-3">
+                                                <a href="/static/uploads/${ann.results_file}" class="btn btn-sm btn-primary" download>
+                                                    <i class="fas fa-download"></i> Download Results
+                                                </a>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            `;
+                            announcementsList.innerHTML += announcementHtml;
+                        });
+                    } else {
+                        const announcementsList = document.getElementById('announcementsList');
+                        announcementsList.innerHTML = '<p class="text-muted">No announcements yet. Check back later!</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading announcements:', error);
+                    const announcementsList = document.getElementById('announcementsList');
+                    announcementsList.innerHTML = '<p class="text-danger">Failed to load announcements.</p>';
+                });
+        }
+
+        function loadNotifications() {
+            fetch('/get_student_notifications')
+                .then(response => response.json())
+                .then(data => {
+                    const notificationsList = document.getElementById('notificationsList');
+                    if (data.status === 'success' && data.notifications.length > 0) {
+                        notificationsList.innerHTML = '';
+
+                        data.notifications.forEach(notif => {
+                            const notifDate = new Date(notif.timestamp).toLocaleDateString();
+                            const notifHtml = `
+                                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                    <h5 class="alert-heading">
+                                        <i class="fas fa-times-circle"></i> Absence Alert
+                                    </h5>
+                                    <p class="mb-2"><strong>Subject:</strong> ${notif.subject}</p>
+                                    <p class="mb-2"><strong>Date:</strong> ${notif.date}</p>
+                                    <p class="mb-2">${notif.message_text}</p>
+                                    <small class="text-muted">Notified on: ${notifDate}</small>
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            `;
+                            notificationsList.innerHTML += notifHtml;
+                        });
+                    } else {
+                        notificationsList.innerHTML = '<p class="text-success"><i class="fas fa-check-circle"></i> Great! No absence alerts. Keep up the good attendance!</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading notifications:', error);
+                    const notificationsList = document.getElementById('notificationsList');
+                    notificationsList.innerHTML = '<p class="text-muted">Unable to load notifications.</p>';
+                });
+        }
+
+        // New loader functions
+        function loadAttendance() {
+            fetch('/get_student_attendance')
+                .then(res => res.json())
+                .then(data => {
+                    const tbody = document.querySelector('#attendance table tbody');
+                    if (!tbody) return;
+                    tbody.innerHTML = '';
+                    if (data.status === 'success' && data.attendance.length) {
+                        data.attendance.forEach(rec => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${rec.date || ''}</td>
+                                <td>${rec.subject || ''}</td>
+                                <td>${rec.status || ''}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    } else {
+                        tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">No records found</td></tr>`;
+                    }
+                })
+                .catch(err => console.error('Error loading attendance', err));
+        }
+
+        function loadAssignments() {
+            fetch('/get_student_assignments')
+                .then(res => res.json())
+                .then(data => {
+                    const tbody = document.querySelector('#assignments table tbody');
+                    if (!tbody) return;
+                    tbody.innerHTML = '';
+                    if (data.status === 'success' && data.assignments.length) {
+                        data.assignments.forEach(a => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${a.filename || 'N/A'}</td>
+                                <td>${a.upload_date || ''}</td>
+                                <td>${a.status || ''}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    } else {
+                        tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">No assignments uploaded</td></tr>`;
+                    }
+                })
+                .catch(err => console.error('Error loading assignments', err));
+        }
+
+        function loadFees() {
+            fetch('/get_student_fees')
+                .then(res => res.json())
+                .then(data => {
+                    const tbody = document.querySelector('#fees table tbody');
+                    if (!tbody) return;
+                    tbody.innerHTML = '';
+                    if (data.status === 'success' && data.fees.length) {
+                        data.fees.forEach(f => {
+                            const statusBadge = f.status === 'Paid' ? '<span class="badge bg-success">Paid</span>' : '<span class="badge bg-danger">Pending</span>';
+                            const action = f.status === 'Pending'
+    ? `<button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#paymentModal" onclick="setPaymentDetails('${f._id}','${f.fee_type}', ${f.amount})"><i class="fas fa-credit-card"></i> Pay Now</button>`
+    : '<span class="text-muted">—</span>';
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td><strong>${f.fee_type}</strong></td>
+                                <td>₹${f.amount.toLocaleString('en-IN')}</td>
+                                <td>${f.due_date || ''}</td>
+                                <td>${statusBadge}</td>
+                                <td>${action}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                        // update footer totals
+                        const pendingTotal = data.fees.filter(x=>x.status!=='Paid').reduce((s,x)=>s+ (x.amount||0),0);
+                        const footer = document.querySelector('#fees table tfoot tr th');
+                        if (footer) footer.innerHTML = `Total Pending: <strong>₹${pendingTotal.toLocaleString('en-IN')}</strong>`;
+                    } else {
+                        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No fee records</td></tr>`;
+                    }
+                })
+                .catch(err => console.error('Error loading fees', err));
+        }
+
+        
+            fetch('/get_student_marks?marks_type=internals')
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.querySelector('#internalsMarksTable tbody');
+                    tbody.innerHTML = '';
+
+                    if (data.status === 'success' && data.marks && data.marks.length > 0) {
+                        data.marks.forEach(mark => {
+                            const row = `
+                                <tr>
+                                    <td>${mark.subject}</td>
+                                    <td><span class="badge bg-success">${mark.marks}</span></td>
+                                    <td><span class="badge bg-success">Visible</span></td>
+                                    <td>${mark.assigned_date || 'N/A'}</td>
+                                </tr>
+                            `;
+                            tbody.innerHTML += row;
+                        });
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No internals marks yet.</td></tr>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading internals marks:', error);
+                    document.querySelector('#internalsMarksTable tbody').innerHTML = 
+                        '<tr><td colspan="4" class="text-center text-danger">Failed to load marks.</td></tr>';
+                });
+        
+
+        function loadExamMarks() {
+            fetch('/get_student_marks?marks_type=exam')
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.querySelector('#examMarksTable tbody');
+                    tbody.innerHTML = '';
+
+                    if (data.status === 'success' && data.marks && data.marks.length > 0) {
+                        data.marks.forEach(mark => {
+                            const statusBadge = mark.approval_status === 'approved' 
+                                ? '<span class="badge bg-success">Approved</span>'
+                                : '<span class="badge bg-warning">Pending</span>';
+                            const row = `
+                                <tr>
+                                    <td>${mark.subject}</td>
+                                    <td><span class="badge bg-info">${mark.marks}</span></td>
+                                    <td>${statusBadge}</td>
+                                    <td>${mark.submitted_date || 'N/A'}</td>
+                                </tr>
+                            `;
+                            tbody.innerHTML += row;
+                        });
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No exam marks yet.</td></tr>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading exam marks:', error);
+                    document.querySelector('#examMarksTable tbody').innerHTML = 
+                        '<tr><td colspan="4" class="text-center text-danger">Failed to load marks.</td></tr>';
+                });
+        }
+
+        // ================= QUIZ FUNCTIONS =================
+        function loadPendingQuizzes() {
+            fetch('/get_pending_quizzes')
+                .then(r => r.json())
+                .then(data => {
+                    const tableBody = document.getElementById('pendingQuizzesList');
+                    
+                    if (data.status === 'success' && data.quizzes && data.quizzes.length > 0) {
+                        tableBody.innerHTML = data.quizzes.map(quiz => `
+                            <tr>
+                                <td><strong>${quiz.title}</strong></td>
+                                <td>${quiz.subject}</td>
+                                <td>${quiz.lecturer_name}</td>
+                                <td>${quiz.questions.length}</td>
+                                <td>${quiz.total_marks}</td>
+                                <td>${quiz.deadline}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" onclick="startQuiz('${quiz._id}')">
+                                        <i class="fas fa-play-circle"></i> Attempt
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No pending quizzes</td></tr>';
+                    }
+                })
+                .catch(err => {
+                    console.error('Error:', err);
+                    document.getElementById('pendingQuizzesList').innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error loading quizzes</td></tr>';
+                });
+        }
+
+        function loadCompletedQuizzes() {
+            fetch('/get_completed_quizzes')
+                .then(r => r.json())
+                .then(data => {
+                    const tableBody = document.getElementById('completedQuizzesList');
+                    
+                    if (data.status === 'success' && data.results && data.results.length > 0) {
+                        tableBody.innerHTML = data.results.map(result => `
+                            <tr>
+                                <td><strong>${result.quiz_title}</strong></td>
+                                <td>${result.subject}</td>
+                                <td>${result.lecturer_name}</td>
+                                <td>${result.total_marks}</td>
+                                <td><span class="badge bg-info">${result.marks_obtained}</span></td>
+                                <td><span class="badge bg-${result.percentage >= 50 ? 'success' : 'warning'}">${result.percentage}%</span></td>
+                                <td><span class="badge bg-success">${result.correct_answers}</span></td>
+                                <td><span class="badge bg-danger">${result.wrong_answers}</span></td>
+                                <td>${new Date(result.submitted_at).toLocaleString()}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info" onclick="viewQuizResults('${result._id}')">
+                                        <i class="fas fa-chart-bar"></i> Details
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        tableBody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">No completed quizzes yet</td></tr>';
+                    }
+                })
+                .catch(err => {
+                    console.error('Error:', err);
+                    document.getElementById('completedQuizzesList').innerHTML = '<tr><td colspan="10" class="text-center text-danger">Error loading results</td></tr>';
+                });
+        }
+
+        function startQuiz(quizId) {
+            fetch(`/get_quiz/${quizId}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const quiz = data.quiz;
+                        if (confirm(`Start quiz: ${quiz.title}?\n\nTime Limit: ${quiz.time_limit} minutes\nTotal Marks: ${quiz.total_marks}\n\nClick OK to start.`)) {
+                            displayQuizInterface(quiz);
+                        }
+                    }
+                })
+                .catch(err => alert('Error loading quiz'));
+        }
+
+        function displayQuizInterface(quiz) {
+            const container = document.querySelector('.main-content');
+            const quizHTML = `
+                <div id="quizInterface" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; display: flex; align-items: center; justify-content: center;">
+                    <div style="background: white; border-radius: 10px; width: 90%; max-width: 900px; max-height: 90vh; overflow-y: auto; padding: 30px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3>${quiz.title}</h3>
+                            <div>
+                                <span style="margin-right: 20px;"><strong>Time Left: <span id="timeLeft">${quiz.time_limit}</span> min</strong></span>
+                                <button class="btn btn-danger btn-sm" onclick="closeQuiz()">Exit Quiz</button>
+                            </div>
+                        </div>
+                        <form id="quizAnswersForm">
+                            <div id="questionsDisplay"></div>
+                            <div style="margin-top: 20px;">
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="fas fa-check"></i> Submit Quiz
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-lg" onclick="closeQuiz()">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', quizHTML);
+            
+            const questionsDisplay = document.getElementById('questionsDisplay');
+            questionsDisplay.innerHTML = quiz.questions.map((q, idx) => `
+                <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                    <h6><strong>Q${idx + 1}. ${q.question_text}</strong> <span style="color: #667eea;">(${ q.marks} marks)</span></h6>
+                    ${q.question_type === 'mcq' ? `
+                        <div>
+                            ${['a', 'b', 'c', 'd'].map(opt => `
+                                <div class="form-check">
+                                    <input type="radio" class="form-check-input" name="answer_${idx}" value="${opt}" id="q${idx}_${opt}" required>
+                                    <label class="form-check-label" for="q${idx}_${opt}">
+                                        <strong>${opt.toUpperCase()})</strong> ${q.options[opt]}
+                                    </label>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <textarea class="form-control" name="answer_${idx}" placeholder="Type your answer..." required></textarea>
+                    `}
+                </div>
+            `).join('');
+
+            document.getElementById('quizAnswersForm').onsubmit = function(e) {
+                e.preventDefault();
+                submitQuizAnswers(quiz._id, quiz.questions, quiz.total_marks);
+            };
+
+            // Start timer
+            startQuizTimer(quiz.time_limit);
+        }
+
+        function startQuizTimer(minutes) {
+            let timeLeft = minutes * 60;
+            const timerInterval = setInterval(() => {
+                timeLeft--;
+                const mins = Math.floor(timeLeft / 60);
+                const secs = timeLeft % 60;
+                document.getElementById('timeLeft').textContent = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    alert('Time is up! Quiz submitted automatically.');
+                    document.getElementById('quizAnswersForm').submit();
+                }
+            }, 1000);
+        }
+
+        function submitQuizAnswers(quizId, questions, totalMarks) {
+            const answers = {};
+            let marksObtained = 0;
+            let correctAnswers = 0;
+            let wrongAnswers = 0;
+
+            questions.forEach((q, idx) => {
+                const answer = document.querySelector(`input[name="answer_${idx}"]:checked`) || document.querySelector(`textarea[name="answer_${idx}"]`);
+                if (answer) {
+                    answers[idx] = answer.value;
+                    
+                    if (q.question_type === 'mcq' && answer.value === q.correct_answer) {
+                        marksObtained += q.marks;
+                        correctAnswers++;
+                    } else if (q.question_type !== 'mcq') {
+                        // For non-MCQ, faculty will grade manually
+                        wrongAnswers++;
+                    } else {
+                        wrongAnswers++;
+                    }
+                }
+            });
+
+            fetch('/submit_quiz', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    quiz_id: quizId,
+                    answers: answers,
+                    marks_obtained: marksObtained,
+                    correct_answers: correctAnswers,
+                    wrong_answers: wrongAnswers,
+                    total_marks: totalMarks
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    closeQuiz();
+                    alert(`✓ Quiz submitted successfully!\n\nCorrect Answers: ${correctAnswers}\nWrong Answers: ${wrongAnswers}\n\nYour results have been recorded.`);
+                    loadPendingQuizzes();
+                    loadCompletedQuizzes();
+                } else {
+                    alert('❌ Error submitting quiz');
+                }
+            })
+            .catch(err => alert('Error submitting quiz'));
+        }
+
+        function closeQuiz() {
+            const quizInterface = document.getElementById('quizInterface');
+            if (quizInterface) {
+                quizInterface.remove();
+            }
+        }
+
+        function viewQuizResults(resultId) {
+            alert('View detailed quiz results - ID: ' + resultId);
+        }
+
+        // Load quizzes on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPendingQuizzes();
+            loadCompletedQuizzes();
+        });
+    </script>
+        </div>
+    </div>
+</body>
+</html>

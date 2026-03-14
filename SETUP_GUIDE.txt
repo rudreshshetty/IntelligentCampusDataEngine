@@ -1,0 +1,212 @@
+================================================================================
+           UNIVERSITY MANAGEMENT SYSTEM - SETUP & RUN INSTRUCTIONS
+================================================================================
+
+📋 PREREQUISITES
+================================================================================
+
+1. Python 3.8+ installed
+2. MongoDB installed and running
+3. Internet connection (for Bootstrap CDN)
+
+Check Python version:
+    python --version
+
+Check if pip is installed:
+    pip --version
+
+
+📦 STEP 1: INSTALL REQUIRED PACKAGES
+================================================================================
+
+Open PowerShell or Command Prompt and run:
+
+    pip install flask pymongo werkzeug reportlab
+
+
+Or install from requirements file (if created):
+
+    pip install -r requirements.txt
+
+
+🗄️  STEP 2: START MONGODB
+================================================================================
+
+OPTION A: If MongoDB is installed as service
+    mongod
+
+OPTION B: If using MongoDB on Windows (direct command)
+    cd "C:\Program Files\MongoDB\Server\<version>\bin"
+    mongod.exe
+
+OPTION C: Check if MongoDB is running
+    Open MongoDB Compass or mongosh and connect to:
+    mongodb://localhost:27017/
+
+
+✅ STEP 3: SEED DATABASE (Add Demo Users)
+================================================================================
+
+Navigate to project folder, then run:
+
+    python seed_database.py
+
+Expected output:
+    🗄️  Starting Database Seeding...
+    📝 Seeding Users...
+    ✓ 12 users created
+    ✅ DATABASE SEEDING COMPLETED SUCCESSFULLY!
+
+
+🚀 STEP 4: RUN THE FLASK APPLICATION
+================================================================================
+
+In PowerShell/CMD, navigate to PROJECT folder and run:
+
+    python app.py
+
+Expected output:
+    WARNING in app.run_simple
+      ...
+    Running on http://127.0.0.1:5000
+    Press CTRL+C to quit
+
+
+🌐 STEP 5: OPEN IN BROWSER
+================================================================================
+
+Open browser and go to:
+
+    http://localhost:5000/
+    
+OR
+
+    http://127.0.0.1:5000/
+
+
+🔐 STEP 6: LOGIN WITH DEMO CREDENTIALS
+================================================================================
+
+Try these accounts:
+
+STUDENT:
+    Username: student1
+    Password: pass
+
+LECTURER:
+    Username: lecturer1
+    Password: pass
+
+ADMIN:
+    Username: admin1
+    Password: pass
+
+
+================================================================================
+                          COMPLETE SETUP SCRIPT
+================================================================================
+
+Copy and paste this entire block in PowerShell:
+
+# Navigate to project folder
+cd "C:\Users\Rahul\RK WORLD\PROJECT"
+
+# Install packages
+pip install flask pymongo werkzeug reportlab
+
+# Seed database
+python seed_database.py
+
+# Run application
+python app.py
+
+# Then open browser at: http://localhost:5000/
+
+
+================================================================================
+                            TROUBLESHOOTING
+================================================================================
+
+❌ ERROR: "flask not found"
+   FIX: pip install flask
+
+❌ ERROR: "MongoDB connection refused"
+   FIX: Make sure MongoDB is running (mongod)
+
+❌ ERROR: "port 5000 already in use"
+   FIX: Kill process using port 5000 or change port in app.py
+
+❌ ERROR: "ModuleNotFoundError: No module named 'pymongo'"
+   FIX: pip install pymongo
+
+❌ ERROR: "ReportLab not found"
+   FIX: pip install reportlab
+
+❌ Cannot access http://localhost:5000/
+   FIX: Check if Flask is running and port 5000 is open
+
+
+================================================================================
+                            STOP THE APPLICATION
+================================================================================
+
+To stop the running Flask server:
+    Press CTRL+C (in the terminal where Flask is running)
+
+
+================================================================================
+                         USEFUL COMMANDS SUMMARY
+================================================================================
+
+Navigate to project:
+    cd C:\Users\Rahul\RK WORLD\PROJECT
+
+Install all dependencies:
+    pip install flask pymongo werkzeug reportlab
+
+Seed database:
+    python seed_database.py
+
+Run application:
+    python app.py
+
+Check MongoDB status:
+    mongosh
+
+Open application:
+    http://localhost:5000/
+
+
+================================================================================
+                         PROJECT FILE STRUCTURE
+================================================================================
+
+RK WORLD\PROJECT\
+├── app.py                          (Main Flask application)
+├── database.py                      (Database connection)
+├── seed_database.py                 (Demo data insertion)
+├── credentials.txt                  (Login info reference)
+├── templates/
+│   ├── login.html                  (Login page)
+│   ├── student_dashboard.html       (Student interface)
+│   ├── lecturer_dashboard.html      (Lecturer interface)
+│   └── admin_dashboard.html         (Admin interface)
+├── static/
+│   ├── css/                         (Stylesheets)
+│   └── uploads/                     (File storage)
+
+
+================================================================================
+                            NEXT STEPS
+================================================================================
+
+1. ✓ Run: python seed_database.py
+2. ✓ Run: python app.py
+3. ✓ Open: http://localhost:5000/
+4. ✓ Login with demo credentials
+5. ✓ Explore the system!
+
+
+For more info, open credentials.txt or read app.py documentation.
+
+================================================================================

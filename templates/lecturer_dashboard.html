@@ -1,0 +1,1590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecturer Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1a237e 0%, #283593 25%, #3949ab 50%, #5c6bc0 75%, #7986cb 100%);
+            background-attachment: fixed;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            position: relative;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 15% 30%, rgba(255,255,255,0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 85% 70%, rgba(0,0,0,0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .container-wrapper {
+            display: flex;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px 0;
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 1000;
+        }
+        .sidebar-brand {
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+            padding: 20px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+        .sidebar-brand img {
+            height: 55px;
+            width: auto;
+            display: block;
+            margin-right: 0;
+            object-fit: contain;
+            transition: all 0.3s ease;
+            filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.2));
+        }
+        .sidebar-brand:hover img {
+            height: 58px;
+            filter: drop-shadow(0 3px 10px rgba(255, 255, 255, 0.3));
+        }
+        .sidebar-brand-text {
+            line-height: 1.3;
+            font-size: 16px;
+            flex-grow: 0;
+            font-weight: 700;
+            text-align: center;
+            color: white;
+        }
+        .sidebar-brand:hover {
+            color: white;
+        }
+        .sidebar-nav {
+            margin-top: 20px;
+            list-style: none;
+            padding: 0;
+            width: 100%;
+        }
+        .sidebar-nav li {
+            margin: 0;
+        }
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            padding: 15px 20px;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            cursor: pointer;
+            white-space: nowrap;
+            width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .sidebar-nav a:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding-left: 25px;
+        }
+        .sidebar-nav a.active {
+            background: rgba(255, 255, 255, 0.25);
+            color: white;
+            border-left: 4px solid white;
+            padding-left: 16px;
+        }
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            flex: 1;
+        }
+        .section {
+            display: none;
+        }
+        .section.active {
+            display: block;
+        }
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+        }
+        .card-header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+            padding: 15px;
+            font-weight: 600;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border: none;
+            border-radius: 8px;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+            transform: translateY(-2px);
+        }
+        .form-control:focus {
+            border-color: #f5576c;
+            box-shadow: 0 0 0 0.2rem rgba(245, 87, 108, 0.25);
+        }
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e9ecef;
+        }
+        /* Selected attendance button style */
+        .attendance-selected {
+            background: #343a40 !important;
+            color: #fff !important;
+            border-color: #343a40 !important;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.25);
+        }
+        /* iOS Style Attendance Toggle Switch (single right-side status label) */
+        .attendance-toggle-group {
+            position: relative;
+            display: inline-flex;
+            width: 160px; /* increased width to give more room */
+            height: 44px;
+            background: #eee;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.22s ease;
+            border: none;
+            padding: 0 18px 0 12px; /* reserve extra right padding for label */
+            margin: 0;
+            align-items: center;
+            justify-content: flex-start;
+            box-sizing: border-box;
+        }
+        .attendance-toggle-group.present { background: rgba(76,175,80,0.08); }
+        .attendance-toggle-group.absent { background: rgba(244,67,54,0.1); border: 2px solid rgba(244,67,54,0.3); }
+
+        /* single status label on the right; colors indicate status */
+        .toggle-label {
+            position: absolute;
+            right: 16px; /* leave space from the right edge */
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            white-space: nowrap;
+            z-index: 3; /* above the knob to guarantee visibility */
+            user-select: none;
+            pointer-events: none;
+            transition: color 0.15s ease, opacity 0.15s ease;
+            padding: 6px 10px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.06);
+        }
+        .present-label { color: #0b6623; opacity: 0; }
+        .absent-label { color: #a82b1b; opacity: 0; font-weight: 900; }
+
+        /* show only the active status label */
+        .attendance-toggle-group.present .present-label { opacity: 1; }
+        .attendance-toggle-group.present .absent-label { opacity: 0; }
+        .attendance-toggle-group.absent .absent-label { opacity: 1; }
+        .attendance-toggle-group.absent .present-label { opacity: 0; }
+        
+        /* Notification badge for absent status */
+        .attendance-toggle-group.absent .absent-label::before {
+            content: '🔔 ';
+            margin-right: 3px;
+        }
+
+        /* knob */
+        .attendance-toggle-group::after {
+            content: '';
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 8px; /* present (left) */
+            transition: left 0.22s ease, box-shadow 0.12s ease;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.18);
+            z-index: 2;
+        }
+        /* knob moved to right when marked absent - stops before the right label area */
+        .attendance-toggle-group.absent::after { left: calc(100% - 64px); background: #ffebee; box-shadow: 0 3px 8px rgba(244,67,54,0.3); }
+
+        /* Hidden buttons inside toggle - keep for accessibility if needed */
+        .attendance-toggle-btn { display: none; }
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 200px;
+            }
+            .main-content {
+                margin-left: 200px;
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-wrapper">
+        <!-- Vertical Sidebar Navigation -->
+        <aside class="sidebar">
+            <a class="sidebar-brand" href="#">
+                <img src="{{ url_for('static', filename='logos/sapthagiri_logo.svg') }}" alt="Sapthagiri Logo">
+                <div class="sidebar-brand-text">Sapthagiri NPS University</div>
+            </a>
+            <ul class="sidebar-nav">
+                <li>
+                    <a href="javascript:void(0);" onclick="showSection('attendance')" class="active">
+                        <i class="fas fa-calendar-check"></i> Attendance
+                    </a>
+                </li>
+                <li>
+                    <a href="javascript:void(0);" onclick="showSection('marks')">
+                        <i class="fas fa-list-check"></i> Marks
+                    </a>
+                </li>
+                <li>
+                    <a href="javascript:void(0);" onclick="showSection('assignments')">
+                        <i class="fas fa-clipboard-list"></i> Assignments
+                    </a>
+                </li>
+                <li>
+                    <a href="javascript:void(0);" onclick="showSection('quizzes')">
+                        <i class="fas fa-question-circle"></i> Quizzes
+                    </a>
+                </li>
+                <li>
+                    <a href="javascript:void(0);" onclick="showSection('events')">
+                        <i class="fas fa-calendar-alt"></i> Events
+                    </a>
+                </li>
+                <li>
+                    <a href="/logout" class="">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <section id="attendance" class="section active">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-calendar-check"></i> Mark Attendance
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3">
+                            <label for="attendanceDate" class="form-label"><strong>Select Date</strong></label>
+                            <input type="date" class="form-control" id="attendanceDate" name="attendanceDate" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="attendanceSubject" class="form-label"><strong>Select Subject</strong></label>
+                            <select class="form-control" id="attendanceSubject" name="attendanceSubject" required>
+                                <option value="">-- Select Subject --</option>
+                                <option value="Mathematics">Mathematics</option>
+                                <option value="Physics">Physics</option>
+                                <option value="Chemistry">Chemistry</option>
+                                <option value="Data Structures">Data Structures</option>
+                                <option value="Database Mgmt">Database Management</option>
+                                <option value="Web Development">Web Development</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> <strong>Instructions:</strong> Click on students who are <strong>ABSENT</strong> (toggle will show bell icon 🔔). All other unmarked students will automatically be marked PRESENT. Parents will be notified immediately of their child's absence.
+                    </div>
+
+                    <h6 class="mb-3"><strong>Students List - Mark Attendance</strong></h6>
+                    {% if not all_students %}
+                        <div class="alert alert-warning">
+                            No student records found. Please ask an <a href="/admin">administrator</a> to add students.
+                        </div>
+                    {% endif %}
+                    <form id="attendanceForm">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 5%;">#</th>
+                                    <th style="width: 20%;">Student Name</th>
+                                    <th style="width: 15%;">Enrollment No</th>
+                                    <th style="width: 15%;">Parent Contact</th>
+                                    <th style="width: 45%;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentsList">
+                                {% if all_students %}
+                                    {% for student in all_students %}
+                                    <tr>
+                                        <td>{{ loop.index }}</td>
+                                        <td><strong>{{ student.get('name', 'N/A') }}</strong></td>
+                                        <td>{{ student.get('enrollment_no', 'N/A') }}</td>
+                                        <td>{{ student.get('parent_contact', student.get('phone', student.get('contact', 'N/A'))) }}</td>
+                                        <td>
+                                            <div class="attendance-toggle-group present" onclick="toggleAttendanceToggle(this, '{{ student.get('enrollment_no', '') }}', '{{ student.get('name', '') }}', '{{ student.get('parent_contact', student.get('phone', student.get('contact', ''))) }}')">
+                                                <span class="toggle-label present-label">Present</span>
+                                                <span class="toggle-label absent-label">Absent</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">No students found</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="button" class="btn btn-primary btn-lg" onclick="saveAllAttendance()">
+                            <i class="fas fa-save"></i> Save Attendance
+                        </button>
+                    </div>
+                    </form>
+
+                    <hr>
+                    <h5>Attendance Records</h5>
+                    <div class="table-responsive">
+                        <table id="attendanceRecordsTable" class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Enrollment No</th>
+                                    <th>Student Name</th>
+                                    <th>Date</th>
+                                    <th>Subject</th>
+                                    <th>Status</th>
+                                    <th>Marked By</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if attendance_records %}
+                                    {% for record in attendance_records %}
+                                    <tr>
+                                        <td>{{ record.get('student_id', 'N/A') }}</td>
+                                        <td>{{ record.get('student_name', 'N/A') }}</td>
+                                        <td>{{ record.get('date', 'N/A') }}</td>
+                                        <td>{{ record.get('subject', 'N/A') }}</td>
+                                        <td>
+                                            {% if record.get('status') == 'Present' %}
+                                                <span class="badge bg-success">Present</span>
+                                            {% elif record.get('status') == 'Absent' %}
+                                                <span class="badge bg-danger">Absent</span><br><small class="text-danger">Parent Notified</small>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ record.get('status', 'Unknown') }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ record.get('lecturer_id', 'System') }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">No attendance records found</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Marks Section -->
+        <section id="marks" class="section">
+            <!-- Internals Marks Tab -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-edit"></i> Internals Marks
+                    <span class="badge bg-success" style="float: right;">Auto Visible to Students</span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="internalsSubject" class="form-label">Select Subject</label>
+                            <select class="form-control" id="internalsSubject">
+                                <option value="">-- Select Subject --</option>
+                                <option value="Mathematics">Mathematics</option>
+                                <option value="Physics">Physics</option>
+                                <option value="Chemistry">Chemistry</option>
+                                <option value="Data Structures">Data Structures</option>
+                                <option value="Database Mgmt">Database Management</option>
+                                <option value="Web Development">Web Development</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3 d-flex align-items-end">
+                            <button type="button" class="btn btn-primary" onclick="loadStudentsForMarks('internals')">
+                                <i class="fas fa-users"></i> Load Students
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="internalsStudentsContainer" style="display:none;">
+                        <form id="bulkInternalsForm">
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="internalsTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Student Name</th>
+                                            <th>Enrollment No</th>
+                                            <th>Marks (Out of 50)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="internalsTbody">
+                                        <!-- Populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="mt-3">
+                                <button type="button" class="btn btn-success" onclick="submitMarksBulk('internals')">
+                                    <i class="fas fa-save"></i> Submit Internals Marks
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <hr>
+                    <h5>Recent Internals Marks</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="recentInternalsTable">
+                            <thead>
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Subject</th>
+                                    <th>Marks (Out of 50)</th>
+                                    <th>Status</th>
+                                    <th>Assigned On</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>STU001</td>
+                                    <td>Mathematics</td>
+                                    <td><span class="badge bg-success">45</span></td>
+                                    <td><span class="badge bg-info">Visible</span></td>
+                                    <td>2026-02-14</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Exam Marks Tab -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-file-check"></i> Exam Marks Update
+                    <span class="badge bg-warning" style="float: right;">Requires Admin Approval</span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="examSubject" class="form-label">Select Subject</label>
+                            <select class="form-control" id="examSubject">
+                                <option value="">-- Select Subject --</option>
+                                <option value="Mathematics">Mathematics</option>
+                                <option value="Physics">Physics</option>
+                                <option value="Chemistry">Chemistry</option>
+                                <option value="Data Structures">Data Structures</option>
+                                <option value="Database Mgmt">Database Management</option>
+                                <option value="Web Development">Web Development</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3 d-flex align-items-end">
+                            <button type="button" class="btn btn-primary" onclick="loadStudentsForMarks('exam')">
+                                <i class="fas fa-users"></i> Load Students
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="examStudentsContainer" style="display:none;">
+                        <form id="bulkExamForm">
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="examTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Student Name</th>
+                                            <th>Enrollment No</th>
+                                            <th>Marks (Out of 50)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="examTbody">
+                                        <!-- Populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="alert alert-warning mt-3">
+                                <i class="fas fa-info-circle"></i> These marks will be sent for admin approval before they are visible to students.
+                            </div>
+
+                            <div class="mt-3">
+                                <button type="button" class="btn btn-warning" onclick="submitMarksBulk('exam')">
+                                    <i class="fas fa-paper-plane"></i> Submit for Approval
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <hr>
+                    <h5>Exam Marks Submission Status</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="recentExamTable">
+                            <thead>
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Subject</th>
+                                    <th>Marks (Out of 50)</th>
+                                    <th>Status</th>
+                                    <th>Submitted On</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>STU001</td>
+                                    <td>Mathematics</td>
+                                    <td><span class="badge bg-info">48</span></td>
+                                    <td><span class="badge bg-warning">Pending Approval</span></td>
+                                    <td>2026-02-14</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Assignments Section -->
+        <section id="assignments" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-clipboard-list"></i> Assign Assignments
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="/assign_assignment">
+                        <div class="mb-3">
+                            <label for="assign_title" class="form-label">Assignment Title</label>
+                            <input type="text" class="form-control" id="assign_title" name="title" 
+                                   placeholder="Enter Title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" 
+                                      rows="4" placeholder="Enter Description" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="deadline" class="form-label">Deadline</label>
+                            <input type="date" class="form-control" id="deadline" name="deadline" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> Assign
+                        </button>
+                    </form>
+
+                    <hr>
+                    <h5>Assigned Assignments</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Deadline</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Python Project</td>
+                                    <td>2026-02-28</td>
+                                    <td><span class="badge bg-warning">Pending</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <hr>
+                    <h5>Completed Submissions</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="submissionsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Student Name</th>
+                                    <th>Enrollment No</th>
+                                    <th>Assignment</th>
+                                    <th>File</th>
+                                    <th>Submitted On</th>
+                                </tr>
+                            </thead>
+                            <tbody id="submissionsTbody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Events Section -->
+        <section id="events" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-calendar-alt"></i> Add Events
+                </div>
+                <div class="card-body">
+                    <form id="eventForm" enctype="multipart/form-data" onsubmit="return false;">
+                        <div class="mb-3">
+                            <label for="event_name" class="form-label">Event Name</label>
+                            <input type="text" class="form-control" id="event_name" name="title" placeholder="Enter Event Name">
+                        </div>
+                        <div class="mb-3">
+                            <label for="event_date" class="form-label">Event Date</label>
+                            <input type="date" class="form-control" id="event_date" name="date">
+                        </div>
+                        <div class="mb-3">
+                            <label for="event_poster" class="form-label">Poster / Brochure (PDF, DOC, Image)</label>
+                            <input type="file" class="form-control" id="event_poster" name="poster" accept=".pdf,.doc,.docx,image/*">
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="uploadEventPoster()">
+                            <i class="fas fa-plus"></i> Post Event
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quizzes Section -->
+        <section id="quizzes" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-question-circle"></i> Quiz Management
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs mb-4" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="create-quiz-tab" data-bs-toggle="tab" data-bs-target="#create-quiz" type="button">Create Quiz</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="assigned-quiz-tab" data-bs-toggle="tab" data-bs-target="#assigned-quiz" type="button">Assigned Quizzes</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="quiz-results-tab" data-bs-toggle="tab" data-bs-target="#quiz-results" type="button">Student Results</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <!-- Create Quiz Tab -->
+                        <div class="tab-pane fade show active" id="create-quiz">
+                            <h5>Create New Quiz</h5>
+                            <form id="quizForm" onsubmit="createQuiz(event)">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="quiz_title" class="form-label">Quiz Title</label>
+                                        <input type="text" class="form-control" id="quiz_title" required placeholder="e.g., Chapter 5 Quiz">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="quiz_subject" class="form-label">Subject</label>
+                                        <input type="text" class="form-control" id="quiz_subject" required placeholder="e.g., Physics">
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label for="total_marks" class="form-label">Total Marks</label>
+                                        <input type="number" class="form-control" id="total_marks" required min="10" max="200">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="quiz_deadline" class="form-label">Deadline</label>
+                                        <input type="date" class="form-control" id="quiz_deadline" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="time_limit" class="form-label">Time Limit (minutes)</label>
+                                        <input type="number" class="form-control" id="time_limit" required min="5" max="480">
+                                    </div>
+                                </div>
+
+                                <div id="questionsContainer">
+                                    <h6>Questions</h6>
+                                    <div id="questionsList"></div>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="addQuestion()">
+                                        <i class="fas fa-plus"></i> Add Question
+                                    </button>
+                                </div>
+
+                                <hr>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Create & Assign Quiz
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Assigned Quizzes Tab -->
+                        <div class="tab-pane fade" id="assigned-quiz">
+                            <h5>My Assigned Quizzes</h5>
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="assignedQuizzesTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Quiz Title</th>
+                                            <th>Subject</th>
+                                            <th>Total Marks</th>
+                                            <th>Total Questions</th>
+                                            <th>Deadline</th>
+                                            <th>Attempts</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="quizzesList">
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted">
+                                                <i class="fas fa-spinner fa-spin"></i> Loading quizzes...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Quiz Results Tab -->
+                        <div class="tab-pane fade" id="quiz-results">
+                            <h5>Student Quiz Results</h5>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="filter_quiz" class="form-label">Select Quiz</label>
+                                    <select class="form-control" id="filter_quiz" onchange="loadQuizResults()">
+                                        <option value="">-- Select Quiz --</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="quizResultsTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Student Name</th>
+                                            <th>Enrollment No</th>
+                                            <th>Marks Obtained</th>
+                                            <th>Total Marks</th>
+                                            <th>Percentage</th>
+                                            <th>Correct Answers</th>
+                                            <th>Wrong Answers</th>
+                                            <th>Attempted On</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="resultsBody">
+                                        <tr>
+                                            <td colspan="9" class="text-center text-muted">Select a quiz to view results</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Set today's date as default
+        document.getElementById('attendanceDate').valueAsDate = new Date();
+
+        // Toggle attendance when Present/Absent button clicked
+        function toggleAttendance(toggle, enrollment, studentName, parentContact, status) {
+            // If called from button, find the parent toggle group
+            if (toggle.classList.contains('attendance-toggle-btn')) {
+                const toggleGroup = toggle.closest('.attendance-toggle-group');
+                status = status || 'Present';
+                toggleAttendanceToggle(toggleGroup, enrollment, studentName, parentContact, status);
+            }
+        }
+
+        function toggleAttendanceToggle(toggleGroup, enrollment, studentName, parentContact, clickedStatus) {
+            // Determine the new status
+            const currentState = toggleGroup.classList.contains('present') ? 'Present' : 'Absent';
+            const newStatus = clickedStatus || (currentState === 'Present' ? 'Absent' : 'Present');
+
+            // Update the toggle group styling
+            toggleGroup.classList.remove('present', 'absent');
+            if (newStatus === 'Present') {
+                toggleGroup.classList.add('present');
+            } else {
+                toggleGroup.classList.add('absent');
+            }
+
+            // Store the attendance in a hidden input
+            const form = document.getElementById('attendanceForm');
+            const inputName = `attendance_${enrollment}`;
+            let input = form.querySelector(`input[name="${inputName}"]`);
+            if (!input) {
+                input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = inputName;
+                input.setAttribute('data-student', studentName);
+                input.setAttribute('data-enrollment', enrollment);
+                input.setAttribute('data-contact', parentContact);
+                form.appendChild(input);
+            }
+            input.value = newStatus;
+        }
+
+        function saveAllAttendance() {
+            const date = document.getElementById('attendanceDate').value;
+            const subject = document.getElementById('attendanceSubject').value;
+
+            if (!date || !subject) {
+                alert('Please select date and subject first!');
+                return;
+            }
+
+            // Get all student rows from the table
+            const studentTableRows = document.querySelectorAll('#studentsList tr');
+            
+            if (studentTableRows.length === 0) {
+                alert('No students found in the list!');
+                return;
+            }
+
+            // Collect attendance records - marked students AND unmarked as PRESENT
+            const attendanceRecords = [];
+            const form = document.getElementById('attendanceForm');
+            const markedInputs = form.querySelectorAll('input[name^="attendance_"]');
+            
+            // Create a map of marked students for easy lookup
+            const markedStudentsMap = new Map();
+            markedInputs.forEach(input => {
+                const enrollment = input.getAttribute('data-enrollment');
+                markedStudentsMap.set(enrollment, input);
+            });
+
+            let hasAbsentees = false;
+            const absenteesList = [];
+
+            // Process all students - marked or not
+            studentTableRows.forEach(row => {
+                const studentName = row.querySelector('td:nth-child(2)').textContent.trim();
+                const enrollment = row.querySelector('td:nth-child(3)').textContent.trim();
+                const parentContact = row.querySelector('td:nth-child(4)').textContent.trim();
+                
+                // Check if student is marked
+                const markedInput = markedStudentsMap.get(enrollment);
+                let status = 'Present'; // Default is Present
+
+                if (markedInput) {
+                    // Student was explicitly marked
+                    status = markedInput.value;
+                }
+
+                attendanceRecords.push({
+                    student_name: studentName,
+                    enrollment_no: enrollment,
+                    parent_contact: parentContact,
+                    status: status,
+                    date: date,
+                    subject: subject,
+                    time: new Date().toLocaleTimeString()
+                });
+
+                // Track absent students for notification
+                if (status === 'Absent') {
+                    hasAbsentees = true;
+                    absenteesList.push({
+                        student_name: studentName,
+                        enrollment_no: enrollment,
+                        parent_contact: parentContact
+                    });
+                }
+            });
+
+            // If there are absent students, show confirmation before saving
+            if (hasAbsentees) {
+                let msg = `⚠️ PARENT NOTIFICATIONS WILL BE SENT\n\n`;
+                msg += `${absenteesList.length} student(s) marked absent.\n`;
+                msg += `Parents/guardians will be notified via SMS:\n\n`;
+                
+                absenteesList.slice(0, 8).forEach((student, idx) => {
+                    msg += `${idx + 1}. ${student.student_name} (${student.enrollment_no})\n   📱 ${student.parent_contact}\n`;
+                });
+                
+                if (absenteesList.length > 8) {
+                    msg += `\n... and ${absenteesList.length - 8} more students\n`;
+                }
+                
+                msg += `\nAll other students (${attendanceRecords.length - absenteesList.length}) will be marked PRESENT.\n`;
+                msg += `\nClick OK to proceed with saving attendance and notifying parents.`;
+                
+                if (!confirm(msg)) {
+                    return;
+                }
+            } else {
+                // No absent students, just confirm saving all as present
+                if (!confirm(`Mark all ${attendanceRecords.length} students as PRESENT for this class?\n\nClick OK to proceed.`)) {
+                    return;
+                }
+            }
+
+            submitAttendance(attendanceRecords, date, subject);
+        }
+
+
+
+
+
+        function submitAttendance(records, date, subject) {
+            // Show loading indicator
+            const originalBtnText = event?.target?.innerHTML;
+            if (event?.target) {
+                event.target.disabled = true;
+                event.target.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            }
+
+            // Send all attendance records to backend
+            fetch('/save_bulk_attendance', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    attendance_records: records,
+                    date: date,
+                    subject: subject
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Re-enable button
+                if (event?.target) {
+                    event.target.disabled = false;
+                    event.target.innerHTML = '<i class="fas fa-save"></i> Save Attendance';
+                }
+
+                if (data.status === 'success') {
+                    // Count absent students for notification
+                    const absentRecords = records.filter(r => r.status === 'Absent');
+                    
+                    // Create a nice success message
+                    let messageHtml = `
+                        <div class="alert alert-success mb-3">
+                            <h5><i class="fas fa-check-circle"></i> Attendance Saved Successfully!</h5>
+                            <p><strong>Date:</strong> ${date}</p>
+                            <p><strong>Subject:</strong> ${subject}</p>
+                            <p><strong>Total Students:</strong> ${records.length}</p>
+                            <p><i class="fas fa-check" style="color: green;"></i> <strong>Present:</strong> ${data.present_count} students</p>
+                            <p style="font-size: 0.9em; color: #666; margin-top: 8px;">
+                                <em>✓ All unmarked students were automatically marked PRESENT</em>
+                            </p>
+                    `;
+                    
+                    if (data.absent_count > 0) {
+                        messageHtml += `
+                            <p><i class="fas fa-times" style="color: red;"></i> <strong>Absent:</strong> ${data.absent_count} students</p>
+                            <div class="alert alert-info mt-2 mb-0">
+                                <h6><i class="fas fa-bell"></i> Parent Notifications Sent</h6>
+                                <p class="mb-2">SMS notifications have been sent to parents/guardians of the following students:</p>
+                                <ul class="mb-0" style="font-size: 0.9em;">
+                        `;
+                        
+                        absentRecords.slice(0, 6).forEach(student => {
+                            messageHtml += `<li>${student.student_name} (${student.enrollment_no}) - ${student.parent_contact}</li>`;
+                        });
+                        
+                        if (absentRecords.length > 6) {
+                            messageHtml += `<li><em>... and ${absentRecords.length - 6} more student(s)</em></li>`;
+                        }
+                        
+                        messageHtml += `
+                                </ul>
+                            </div>
+                        `;
+                    } else {
+                        // No absent students
+                        messageHtml += `
+                            <div class="alert alert-success mt-2 mb-0">
+                                <h6><i class="fas fa-smile"></i> Great News!</h6>
+                                <p class="mb-0">All ${records.length} students are marked PRESENT. No parent notifications needed.</p>
+                            </div>
+                        `;
+                    }
+                    
+                    messageHtml += `</div>`;
+                    
+                    // Show in a modal or alert
+                    showAttendanceSuccessModal(messageHtml, records, date, subject);
+
+                    // Reset form inputs
+                    document.getElementById('attendanceForm').reset();
+                    
+                    // Reset toggle states
+                    document.querySelectorAll('.attendance-toggle-group').forEach(el => {
+                        el.classList.remove('absent');
+                        el.classList.add('present');
+                    });
+                    
+                    // Clear hidden attendance inputs
+                    document.querySelectorAll('input[name^="attendance_"]').forEach(input => {
+                        input.remove();
+                    });
+                    
+                    document.getElementById('attendanceDate').valueAsDate = new Date();
+
+                    // Append new rows to records table
+                    const tbody = document.querySelector('#attendanceRecordsTable tbody');
+                    if (tbody) {
+                        if (tbody.children.length === 1 && tbody.children[0].querySelector('td[colspan]')) {
+                            tbody.innerHTML = '';
+                        }
+                        records.forEach(r => {
+                            const tr = document.createElement('tr');
+                            const statusBadge = r.status === 'Present' 
+                                ? '<span class="badge bg-success">Present</span>' 
+                                : '<span class="badge bg-danger">Absent</span><br><small class="text-danger">Parent Notified</small>';
+                            tr.innerHTML = `
+                                <td>${r.enrollment_no}</td>
+                                <td>${r.student_name}</td>
+                                <td>${date}</td>
+                                <td>${subject}</td>
+                                <td>${statusBadge}</td>
+                                <td>You</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    }
+                } else {
+                    alert('❌ Error saving attendance:\n' + data.message);
+                }
+            })
+            .catch(error => {
+                if (event?.target) {
+                    event.target.disabled = false;
+                    event.target.innerHTML = '<i class="fas fa-save"></i> Save Attendance';
+                }
+                alert('❌ Error saving attendance:\n' + error);
+            });
+        }
+
+        function showAttendanceSuccessModal(messageHtml, records, date, subject) {
+            // Create a modal dialog to show detailed attendance report
+            const modalContent = `
+                <div class="modal fade" id="attendanceSuccessModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header bg-success text-white">
+                                <h5 class="modal-title"><i class="fas fa-check-circle"></i> Attendance Report</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                ${messageHtml}
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-success" data-bs-dismiss="modal">
+                                    <i class="fas fa-check"></i> Done
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove old modal if exists
+            const oldModal = document.getElementById('attendanceSuccessModal');
+            if (oldModal) {
+                oldModal.remove();
+            }
+            
+            // Add modal to page
+            document.body.insertAdjacentHTML('beforeend', modalContent);
+            
+            // Show the modal
+            const modal = new bootstrap.Modal(document.getElementById('attendanceSuccessModal'));
+            modal.show();
+            
+            // Remove modal from DOM when closed
+            document.getElementById('attendanceSuccessModal').addEventListener('hidden.bs.modal', function() {
+                this.remove();
+            });
+        }
+
+        // Load all students to assign marks
+        function loadStudentsForMarks(marksType) {
+            const subjectId = marksType === 'internals' ? 'internalsSubject' : 'examSubject';
+            const containerId = marksType === 'internals' ? 'internalsStudentsContainer' : 'examStudentsContainer';
+            const tbodyId = marksType === 'internals' ? 'internalsTbody' : 'examTbody';
+            
+            const subject = document.getElementById(subjectId).value;
+            if (!subject) {
+                alert('Please select a subject first');
+                return;
+            }
+
+            fetch('/get_all_students')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status !== 'success') {
+                        alert('Error loading students');
+                        return;
+                    }
+
+                    const students = data.students || [];
+                    const tbody = document.getElementById(tbodyId);
+                    tbody.innerHTML = '';
+                    students.forEach((s, idx) => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${idx + 1}</td>
+                            <td>${s.name || s.username}</td>
+                            <td>${s.enrollment_no || ''}</td>
+                            <td>
+                                <input type="number" min="0" max="50" class="form-control form-control-sm" 
+                                       name="marks_${s.enrollment_no || s.username}" data-enrollment="${s.enrollment_no || s.username}" data-name="${s.name || s.username}" />
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+
+                    document.getElementById(containerId).style.display = 'block';
+                })
+                .catch(err => {
+                    alert('Error: ' + err);
+                });
+        }
+
+        function submitMarksBulk(marksType) {
+            const subjectId = marksType === 'internals' ? 'internalsSubject' : 'examSubject';
+            const tbodyId = marksType === 'internals' ? 'internalsTbody' : 'examTbody';
+            
+            const subject = document.getElementById(subjectId).value;
+            if (!subject) {
+                alert('Please select subject');
+                return;
+            }
+
+            const inputs = document.querySelectorAll(`#${tbodyId} input[type="number"]`);
+            const records = [];
+
+            inputs.forEach(inp => {
+                const enrollment = inp.getAttribute('data-enrollment');
+                const name = inp.getAttribute('data-name');
+                const val = inp.value;
+                if (val !== '') {
+                    records.push({ enrollment_no: enrollment, student_name: name, marks: val });
+                }
+            });
+
+            if (records.length === 0) {
+                if (!confirm('No marks entered. Submit empty marks?')) return;
+            }
+
+            const endpoint = marksType === 'internals' ? '/assign_internals_marks' : '/assign_exam_marks';
+            const confirmMsg = marksType === 'internals' 
+                ? 'Internals marks submitted successfully! Students can now view them.' 
+                : 'Exam marks submitted for approval! Admin will review before they are visible to students.';
+
+            fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subject: subject, marks_type: marksType, records: records })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(confirmMsg);
+                    // Optionally reload to show recent marks
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(err => alert('Error: ' + err));
+        }
+
+        // Fetch submitted assignments uploaded by students
+        function fetchSubmissions() {
+            fetch('/get_submissions')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status !== 'success') return;
+                    const subs = data.submissions || [];
+                    const tbody = document.getElementById('submissionsTbody');
+                    tbody.innerHTML = '';
+                    subs.forEach((s, idx) => {
+                        const tr = document.createElement('tr');
+                        const submittedOn = s.upload_date ? new Date(s.upload_date).toLocaleString() : '';
+                        const fileLink = s.file_url ? `<a href="${encodeURI(s.file_url)}" target="_blank">${s.filename}</a>` : '-';
+                        tr.innerHTML = `
+                            <td>${idx + 1}</td>
+                            <td>${s.student_name || '-'}</td>
+                            <td>${s.enrollment_no || '-'}</td>
+                            <td>${s.assignment_title || '-'}</td>
+                            <td>${fileLink}</td>
+                            <td>${submittedOn}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                })
+                .catch(err => console.error('Error fetching submissions', err));
+        }
+
+        // ================= QUIZ FUNCTIONS =================
+        let questionCount = 0;
+
+        function addQuestion() {
+            questionCount++;
+            const container = document.getElementById('questionsList');
+            const questionDiv = document.createElement('div');
+            questionDiv.className = 'card mb-3';
+            questionDiv.id = `question_${questionCount}`;
+            questionDiv.innerHTML = `
+                <div class="card-body">
+                    <div class="row mb-2">
+                        <div class="col-md-10">
+                            <label class="form-label">Question ${questionCount}</label>
+                            <textarea class="form-control" name="question_text" placeholder="Enter question" required></textarea>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeQuestion(${questionCount})">
+                                <i class="fas fa-trash"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-md-4">
+                            <label class="form-label">Marks</label>
+                            <input type="number" class="form-control" name="question_marks" min="1" max="10" required>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Question Type</label>
+                            <select class="form-control" name="question_type" onchange="updateQuestionType(${questionCount}, this.value)">
+                                <option value="mcq">Multiple Choice</option>
+                                <option value="short">Short Answer</option>
+                                <option value="essay">Essay</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="options_${questionCount}">
+                        <label class="form-label">Options</label>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text">A)</span>
+                            <input type="text" class="form-control" name="option_a" placeholder="Option A" required>
+                            <input type="radio" name="correct_${questionCount}" value="a" required>
+                        </div>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text">B)</span>
+                            <input type="text" class="form-control" name="option_b" placeholder="Option B" required>
+                            <input type="radio" name="correct_${questionCount}" value="b">
+                        </div>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text">C)</span>
+                            <input type="text" class="form-control" name="option_c" placeholder="Option C" required>
+                            <input type="radio" name="correct_${questionCount}" value="c">
+                        </div>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text">D)</span>
+                            <input type="text" class="form-control" name="option_d" placeholder="Option D" required>
+                            <input type="radio" name="correct_${questionCount}" value="d">
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(questionDiv);
+        }
+
+        function removeQuestion(qNum) {
+            document.getElementById(`question_${qNum}`).remove();
+        }
+
+        function updateQuestionType(qNum, type) {
+            const optionsDiv = document.getElementById(`options_${qNum}`);
+            if (type === 'mcq') {
+                optionsDiv.style.display = 'block';
+            } else {
+                optionsDiv.style.display = 'none';
+            }
+        }
+
+        function createQuiz(event) {
+            event.preventDefault();
+            
+            const title = document.getElementById('quiz_title').value;
+            const subject = document.getElementById('quiz_subject').value;
+            const totalMarks = document.getElementById('total_marks').value;
+            const deadline = document.getElementById('quiz_deadline').value;
+            const timeLimit = document.getElementById('time_limit').value;
+
+            const questions = [];
+            document.querySelectorAll('#questionsList .card').forEach((card, idx) => {
+                const qText = card.querySelector('[name="question_text"]').value;
+                const marks = card.querySelector('[name="question_marks"]').value;
+                const type = card.querySelector('[name="question_type"]').value;
+                
+                let question = {
+                    question_number: idx + 1,
+                    question_text: qText,
+                    marks: parseInt(marks),
+                    question_type: type
+                };
+
+                if (type === 'mcq') {
+                    question.options = {
+                        a: card.querySelector('[name="option_a"]').value,
+                        b: card.querySelector('[name="option_b"]').value,
+                        c: card.querySelector('[name="option_c"]').value,
+                        d: card.querySelector('[name="option_d"]').value
+                    };
+                    question.correct_answer = card.querySelector(`[name="correct_${idx + 1}"]:checked`).value;
+                }
+
+                questions.push(question);
+            });
+
+            fetch('/create_quiz', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: title,
+                    subject: subject,
+                    total_marks: parseInt(totalMarks),
+                    deadline: deadline,
+                    time_limit: parseInt(timeLimit),
+                    questions: questions
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('✓ Quiz created and assigned successfully!');
+                    document.getElementById('quizForm').reset();
+                    document.getElementById('questionsList').innerHTML = '';
+                    questionCount = 0;
+                    loadAssignedQuizzes();
+                } else {
+                    alert('❌ Error: ' + (data.message || 'Failed to create quiz'));
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                alert('❌ Error creating quiz');
+            });
+        }
+
+        function loadAssignedQuizzes() {
+            fetch('/get_lecturer_quizzes')
+                .then(r => r.json())
+                .then(data => {
+                    const tableBody = document.getElementById('quizzesList');
+                    const filterSelect = document.getElementById('filter_quiz');
+                    
+                    if (data.status === 'success' && data.quizzes && data.quizzes.length > 0) {
+                        tableBody.innerHTML = '';
+                        filterSelect.innerHTML = '<option value="">-- Select Quiz --</option>';
+                        
+                        data.quizzes.forEach(quiz => {
+                            const row = `
+                                <tr>
+                                    <td><strong>${quiz.title}</strong></td>
+                                    <td>${quiz.subject}</td>
+                                    <td>${quiz.total_marks}</td>
+                                    <td>${quiz.questions.length}</td>
+                                    <td>${quiz.deadline}</td>
+                                    <td><span class="badge bg-info">${quiz.attempt_count || 0}</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-info" onclick="viewQuizDetails('${quiz._id}')">
+                                            <i class="fas fa-eye"></i> View
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                            tableBody.innerHTML += row;
+                            filterSelect.innerHTML += `<option value="${quiz._id}">${quiz.title}</option>`;
+                        });
+                    } else {
+                        tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No quizzes created yet</td></tr>';
+                    }
+                })
+                .catch(err => console.error('Error:', err));
+        }
+
+        function loadQuizResults() {
+            const quizId = document.getElementById('filter_quiz').value;
+            if (!quizId) {
+                document.getElementById('resultsBody').innerHTML = '<tr><td colspan="9" class="text-center text-muted">Select a quiz to view results</td></tr>';
+                return;
+            }
+
+            fetch('/get_quiz_results', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ quiz_id: quizId })
+            })
+            .then(r => r.json())
+            .then(data => {
+                const tableBody = document.getElementById('resultsBody');
+                
+                if (data.status === 'success' && data.results && data.results.length > 0) {
+                    tableBody.innerHTML = data.results.map(result => `
+                        <tr>
+                            <td><strong>${result.student_name}</strong></td>
+                            <td>${result.enrollment_no}</td>
+                            <td><span class="badge bg-info">${result.marks_obtained}</span></td>
+                            <td>${result.total_marks}</td>
+                            <td><span class="badge bg-${result.percentage >= 50 ? 'success' : 'warning'}">${result.percentage}%</span></td>
+                            <td><span class="badge bg-success">${result.correct_answers}</span></td>
+                            <td><span class="badge bg-danger">${result.wrong_answers}</span></td>
+                            <td>${new Date(result.submitted_at).toLocaleString()}</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" onclick="viewDetailedResult('${result._id}')">
+                                    <i class="fas fa-chart-bar"></i> Details
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No submissions yet</td></tr>';
+                }
+            })
+            .catch(err => console.error('Error:', err));
+        }
+
+        function viewQuizDetails(quizId) {
+            alert('View detailed quiz information - ID: ' + quizId);
+        }
+
+        function viewDetailedResult(resultId) {
+            alert('View detailed result - ID: ' + resultId);
+        }
+
+        // Load quizzes on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAssignedQuizzes();
+        });
+
+            // Upload event poster/brochure
+            function uploadEventPoster() {
+                const title = document.getElementById('event_name').value;
+                const date = document.getElementById('event_date').value;
+                const poster = document.getElementById('event_poster').files[0];
+
+                if (!title) { alert('Please enter event name'); return; }
+                if (!date) { alert('Please select event date'); return; }
+
+                const fd = new FormData();
+                fd.append('title', title);
+                fd.append('date', date);
+                if (poster) fd.append('poster', poster);
+
+                fetch('/upload_event_poster', { method: 'POST', body: fd })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            alert('Event posted successfully');
+                            // clear form
+                            document.getElementById('eventForm').reset();
+                            // Optionally refresh submissions or events
+                            try { fetchSubmissions(); } catch(e) {}
+                        } else {
+                            alert('Error: ' + data.message);
+                        }
+                    })
+                    .catch(err => alert('Error uploading event: ' + err));
+            }
+
+        // Load submitted assignments when page is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            try { fetchSubmissions(); } catch(e) { console.error(e); }
+
+            // Show section function for sidebar navigation
+            window.showSection = function(sectionId) {
+                const sections = document.querySelectorAll('.section');
+                sections.forEach(section => {
+                    section.classList.remove('active');
+                });
+                
+                const activeSection = document.getElementById(sectionId);
+                if (activeSection) {
+                    activeSection.classList.add('active');
+                }
+
+                const navLinks = document.querySelectorAll('.sidebar-nav a');
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                });
+                
+                const activeLink = document.querySelector(`.sidebar-nav a[onclick*="'${sectionId}'"]`);
+                if (activeLink) {
+                    activeLink.classList.add('active');
+                }
+            };
+        });
+    </script>
+    <!-- Parent Notification Modal (Last) -->
+    <div class="modal fade" id="notificationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="fas fa-bell"></i> Parent Notification</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-exclamation-triangle"></i> Absence Alert</h6>
+                        <p class="mb-0">Parent will be notified about the student's absence.</p>
+                    </div>
+                    <div id="notificationContent" style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <!-- Dynamically filled -->
+                    </div>
+                    <div class="alert alert-info mt-3">
+                        <h6><i class="fas fa-paper-plane"></i> Notification Method</h6>
+                        <p><strong>SMS Message:</strong><br>
+                        <code id="smsPreview" style="background:#fff; padding: 10px; display: block; border-radius: 5px; margin-top: 8px;"></code></p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmNotification()">
+                        <i class="fas fa-bell"></i> Send Notification to Parent
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</body>
+</html>
